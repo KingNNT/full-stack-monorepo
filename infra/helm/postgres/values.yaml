@@ -1,0 +1,15 @@
+image:
+  repository: postgres
+  tag: "16-alpine"
+  pullPolicy: IfNotPresent
+
+storage:
+  size: 1Gi
+
+credentials:
+  database: inviduality_dev
+  username: postgres
+  password: password
+
+service:
+  port: 5432

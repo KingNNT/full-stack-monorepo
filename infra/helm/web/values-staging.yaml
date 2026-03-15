@@ -1,0 +1,11 @@
+replicaCount: 2
+
+ingress:
+  host: example.com
+  certificateArn: ""
+
+env:
+  NEXT_PUBLIC_API_BASE_URL: https://api.example.com
+  NEXTAUTH_URL: https://example.com
+
+secrets: {}

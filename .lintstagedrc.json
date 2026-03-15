@@ -1,0 +1,8 @@
+{
+  "apps/web/**/*.{ts,tsx,js,jsx,json,css}": [
+    "biome check --write"
+  ],
+  "apps/api/**/*.{ts,js,json}": [
+    "biome check --write"
+  ]
+}

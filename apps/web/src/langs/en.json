@@ -1,0 +1,81 @@
+{
+	"common": {
+		"home": "Home",
+		"about": "About",
+		"contact": "Contact",
+		"welcome": "Welcome",
+		"language": "Language",
+		"copyright": "All rights reserved"
+	},
+	"navigation": {
+		"title": "KingNNT.org",
+		"home": "Home",
+		"about": "About",
+		"contact": "Contact",
+		"login": "Login",
+		"register": "Register",
+		"dashboard": "Dashboard",
+		"profile": "Profile",
+		"settings": "Settings",
+		"menu": "Menu"
+	},
+	"auth": {
+		"signOut": "Sign out"
+	},
+	"pages": {
+		"home": {
+			"title": "Welcome",
+			"description": "Welcome to KingNNT.org"
+		},
+		"login": {
+			"title": "Login",
+			"description": "Enter your credentials to access your account",
+			"email": "Email",
+			"emailPlaceholder": "user@example.com",
+			"password": "Password",
+			"passwordPlaceholder": "••••••••",
+			"signIn": "Sign in",
+			"signingIn": "Signing in...",
+			"demoCredentials": "Demo credentials: demo@example.com / demo123",
+			"invalidCredentials": "Invalid email or password",
+			"generalError": "An error occurred. Please try again.",
+			"validation": {
+				"invalidEmail": "Invalid email address",
+				"passwordMinLength": "Password must be at least 6 characters"
+			},
+			"noAccount": "Don't have an account?",
+			"registerLink": "Register here"
+		},
+		"register": {
+			"title": "Create Account",
+			"description": "Enter your information to create a new account",
+			"name": "Full Name",
+			"namePlaceholder": "John Doe",
+			"email": "Email",
+			"emailPlaceholder": "user@example.com",
+			"password": "Password",
+			"passwordPlaceholder": "••••••••",
+			"confirmPassword": "Confirm Password",
+			"confirmPasswordPlaceholder": "••••••••",
+			"signUp": "Sign up",
+			"signingUp": "Creating account...",
+			"generalError": "An error occurred. Please try again.",
+			"validation": {
+				"invalidEmail": "Invalid email address",
+				"passwordMinLength": "Password must be at least 6 characters",
+				"passwordsNotMatch": "Passwords do not match",
+				"nameRequired": "Full name is required",
+				"nameMinLength": "Name must be at least 2 characters"
+			},
+			"emailExists": "An account with this email already exists",
+			"successMessage": "Account created successfully! Redirecting...",
+			"haveAccount": "Already have an account?",
+			"loginLink": "Login here"
+		},
+		"dashboard": {
+			"title": "Dashboard",
+			"description": "Your personal dashboard",
+			"welcome": "Welcome to Dashboard"
+		}
+	}
+}

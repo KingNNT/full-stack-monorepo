@@ -1,0 +1,32 @@
+replicaCount: 1
+
+image:
+  pullPolicy: Always
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  host: localhost
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+
+pdb:
+  enabled: false
+
+env:
+  NEXT_PUBLIC_API_BASE_URL: http://api.localhost
+  NEXTAUTH_URL: http://localhost:3000
+
+secrets:
+  AUTH_SECRET: dev-auth-secret-change-me-min-32-chars

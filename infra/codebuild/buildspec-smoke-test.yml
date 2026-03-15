@@ -1,0 +1,36 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo "==> Installing tools..."
+      - curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION
+  build:
+    commands:
+      - echo "==> Running smoke tests for $ENVIRONMENT..."
+      - |
+        API_URL=$(kubectl get ingress -n ${ENVIRONMENT} api \
+          -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+
+        if [ -z "$API_URL" ]; then
+          echo "WARNING: Could not determine API URL from ingress, trying service..."
+          API_URL=$(kubectl get svc -n ${ENVIRONMENT} api \
+            -o jsonpath='{.spec.clusterIP}'):8000
+        fi
+
+        echo "Testing API at: $API_URL"
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${API_URL}/health" --max-time 15 || echo "000")
+
+        if [ "$STATUS" != "200" ]; then
+          echo "ERROR: API health check failed (HTTP $STATUS)"
+          echo "==> Rolling back..."
+          helm rollback api -n ${ENVIRONMENT} || true
+          helm rollback web -n ${ENVIRONMENT} || true
+          exit 1
+        fi
+
+        echo "API health check passed (HTTP $STATUS)"
+  post_build:
+    commands:
+      - echo "==> Smoke tests passed for $ENVIRONMENT"

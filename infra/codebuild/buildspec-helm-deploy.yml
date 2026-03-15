@@ -1,0 +1,52 @@
+version: 0.2
+
+env:
+  secrets-manager:
+    DATABASE_URL: "${ENVIRONMENT}/api/DATABASE_URL"
+    JWT_ACCESS_SECRET: "${ENVIRONMENT}/api/JWT_ACCESS_SECRET"
+    JWT_REFRESH_SECRET: "${ENVIRONMENT}/api/JWT_REFRESH_SECRET"
+    AUTH_SECRET: "${ENVIRONMENT}/web/AUTH_SECRET"
+
+phases:
+  install:
+    commands:
+      - echo "==> Installing Helm..."
+      - curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      - echo "==> Updating kubeconfig..."
+      - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION
+  pre_build:
+    commands:
+      - echo "==> Getting ECR registry..."
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+      - IMAGE_TAG="${IMAGE_TAG:-latest}"
+      - echo "Deploying with image tag $IMAGE_TAG"
+  build:
+    commands:
+      - echo "==> Deploying API to $ENVIRONMENT..."
+      - |
+        helm upgrade --install api infra/helm/api \
+          -f infra/helm/api/values-${ENVIRONMENT}.yaml \
+          --set image.repository=${ECR_REGISTRY}/fullstack-monorepo/api \
+          --set image.tag=${IMAGE_TAG} \
+          --set secrets.DATABASE_URL="${DATABASE_URL}" \
+          --set secrets.JWT_ACCESS_SECRET="${JWT_ACCESS_SECRET}" \
+          --set secrets.JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}" \
+          --namespace ${ENVIRONMENT} \
+          --create-namespace \
+          --history-max 5 \
+          --wait --timeout 5m
+      - echo "==> Deploying Web to $ENVIRONMENT..."
+      - |
+        helm upgrade --install web infra/helm/web \
+          -f infra/helm/web/values-${ENVIRONMENT}.yaml \
+          --set image.repository=${ECR_REGISTRY}/fullstack-monorepo/web \
+          --set image.tag=${IMAGE_TAG} \
+          --set secrets.AUTH_SECRET="${AUTH_SECRET}" \
+          --namespace ${ENVIRONMENT} \
+          --create-namespace \
+          --history-max 5 \
+          --wait --timeout 5m
+  post_build:
+    commands:
+      - echo "==> Helm deploy complete for $ENVIRONMENT"

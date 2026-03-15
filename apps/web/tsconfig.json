@@ -1,0 +1,22 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"composite": false,
+		"declarationMap": false,
+		"emitDeclarationOnly": false,
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"jsx": "preserve",
+		"incremental": true,
+		"noEmit": true,
+		"allowJs": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"paths": {
+			"@/*": ["./src/*"]
+		},
+		"plugins": [{ "name": "next" }]
+	},
+	"include": ["src", "tests", "next-env.d.ts", "next.config.ts", "vitest.config.ts"],
+	"exclude": ["node_modules", "dist", ".next"]
+}

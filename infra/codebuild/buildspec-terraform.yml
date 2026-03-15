@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo "Terraform is pre-installed in the hashicorp/terraform image"
+  pre_build:
+    commands:
+      - echo "==> Initializing Terraform for $ENVIRONMENT..."
+      - cd infra/terraform/envs/$ENVIRONMENT
+      - terraform init -input=false
+      - terraform validate
+  build:
+    commands:
+      - echo "==> Applying Terraform for $ENVIRONMENT..."
+      - terraform apply -auto-approve -input=false
+  post_build:
+    commands:
+      - echo "==> Terraform apply complete for $ENVIRONMENT"

@@ -1,0 +1,26 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+
+# env files (secrets) — keep .env.example
+.env
+.env.*
+!.env.example
+
+# Tests
+test/
+
+# Tooling config
+.claude/
+.serena/
+.husky/
+.vscode/
+.idea/
+bin/
+biome.json
+commitlint.config.ts
+
+# Docs
+*.md

@@ -1,0 +1,81 @@
+{
+	"common": {
+		"home": "Trang chủ",
+		"about": "Giới thiệu",
+		"contact": "Liên hệ",
+		"welcome": "Chào mừng",
+		"language": "Ngôn ngữ",
+		"copyright": "Bản quyền thuộc về"
+	},
+	"navigation": {
+		"title": "KingNNT.org",
+		"home": "Trang chủ",
+		"about": "Giới thiệu",
+		"contact": "Liên hệ",
+		"login": "Đăng nhập",
+		"register": "Đăng ký",
+		"dashboard": "Bảng điều khiển",
+		"profile": "Hồ sơ",
+		"settings": "Cài đặt",
+		"menu": "Menu"
+	},
+	"auth": {
+		"signOut": "Đăng xuất"
+	},
+	"pages": {
+		"home": {
+			"title": "Chào mừng",
+			"description": "Chào mừng đến với KingNNT.org"
+		},
+		"login": {
+			"title": "Đăng nhập",
+			"description": "Nhập thông tin đăng nhập để truy cập tài khoản",
+			"email": "Email",
+			"emailPlaceholder": "user@example.com",
+			"password": "Mật khẩu",
+			"passwordPlaceholder": "••••••••",
+			"signIn": "Đăng nhập",
+			"signingIn": "Đang đăng nhập...",
+			"demoCredentials": "Tài khoản demo: demo@example.com / demo123",
+			"invalidCredentials": "Email hoặc mật khẩu không đúng",
+			"generalError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+			"validation": {
+				"invalidEmail": "Địa chỉ email không hợp lệ",
+				"passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự"
+			},
+			"noAccount": "Chưa có tài khoản?",
+			"registerLink": "Đăng ký tại đây"
+		},
+		"register": {
+			"title": "Tạo tài khoản",
+			"description": "Nhập thông tin để tạo tài khoản mới",
+			"name": "Họ và tên",
+			"namePlaceholder": "Nguyễn Văn A",
+			"email": "Email",
+			"emailPlaceholder": "user@example.com",
+			"password": "Mật khẩu",
+			"passwordPlaceholder": "••••••••",
+			"confirmPassword": "Xác nhận mật khẩu",
+			"confirmPasswordPlaceholder": "••••••••",
+			"signUp": "Đăng ký",
+			"signingUp": "Đang tạo tài khoản...",
+			"generalError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+			"validation": {
+				"invalidEmail": "Địa chỉ email không hợp lệ",
+				"passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự",
+				"passwordsNotMatch": "Mật khẩu không khớp",
+				"nameRequired": "Họ và tên là bắt buộc",
+				"nameMinLength": "Tên phải có ít nhất 2 ký tự"
+			},
+			"emailExists": "Đã tồn tại tài khoản với email này",
+			"successMessage": "Tạo tài khoản thành công! Đang chuyển hướng...",
+			"haveAccount": "Đã có tài khoản?",
+			"loginLink": "Đăng nhập tại đây"
+		},
+		"dashboard": {
+			"title": "Bảng điều khiển",
+			"description": "Bảng điều khiển cá nhân của bạn",
+			"welcome": "Chào mừng đến với Bảng điều khiển"
+		}
+	}
+}

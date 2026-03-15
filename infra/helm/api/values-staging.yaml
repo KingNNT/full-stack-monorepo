@@ -1,0 +1,13 @@
+replicaCount: 2
+
+ingress:
+  host: api.example.com
+  certificateArn: ""
+
+env:
+  NODE_ENV: production
+  PORT: "8000"
+  LOG_LEVEL: info
+  CORS_ALLOWED_ORIGINS: https://example.com
+
+secrets: {}

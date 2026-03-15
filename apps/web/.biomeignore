@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+build
+dist
+.docker
+yarn.lock
+*.css
+app/globals.css
+.vscode
+.lintstagedrc.json
