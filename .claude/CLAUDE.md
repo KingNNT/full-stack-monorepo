@@ -28,6 +28,9 @@ pnpm nx run web:test
 pnpm nx run api:lint
 pnpm nx run web:lint
 
+# Storybook
+pnpm storybook:web        # Start Storybook dev server (Web)
+
 # Run affected only (CI does this)
 pnpm nx affected -t lint typecheck test build
 
@@ -110,13 +113,14 @@ src/
   ├── exceptions/                # Custom error classes
   ├── i18n/                      # i18n setup (next-intl config)
   ├── langs/                     # Translation files (en, vi)
+  ├── libs/intl/                 # Intl polyfill & helpers
   ├── libs/stores/               # Zustand state management
   ├── services/                  # Auth service, NextAuth config
   ├── types/                     # Shared TypeScript types
   └── utils/                     # Utility functions
 ```
 
-Key tech: React 19, TailwindCSS v4, NextAuth (beta), Radix UI + shadcn/ui, Zod validation, React Hook Form.
+Key tech: React 19, TailwindCSS v4, NextAuth (beta), Radix UI + shadcn/ui, Zod validation, React Hook Form, Storybook.
 
 ## Tooling
 

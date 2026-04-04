@@ -44,6 +44,9 @@ make db-seed
 pnpm dev       # both apps
 pnpm dev:api   # API only (port 8000)
 pnpm dev:web   # Web only (port 3000)
+
+# Storybook
+pnpm storybook:web   # Web component playground
 ```
 
 ## Project Structure
@@ -74,6 +77,7 @@ apps/
       exceptions/     Custom error classes
       i18n/           i18n setup (next-intl config)
       langs/          i18n translations (en, vi)
+      libs/intl/      Intl polyfill & helpers
       libs/stores/    Zustand state management
       services/       Auth service, NextAuth config
       types/          Shared TypeScript types
@@ -101,6 +105,9 @@ pnpm test             # Run all tests
 pnpm nx run api:test
 pnpm nx run web:test
 pnpm nx run api:lint
+
+# Storybook
+pnpm storybook:web        # Start Storybook dev server (Web)
 
 # Database
 make db-generate      # Generate migrations from schema
