@@ -52,27 +52,41 @@ jobs:
     strategy:
       matrix:
         app: [api, web]
-    if: |
-      (matrix.app == 'api' && needs.detect-changes.outputs.api == 'true') ||
-      (matrix.app == 'web' && needs.detect-changes.outputs.web == 'true') ||
-      github.event_name == 'workflow_dispatch'
     steps:
+      - name: Check if build is needed
+        id: should-build
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ matrix.app }}" == "api" && "${{ needs.detect-changes.outputs.api }}" == "true" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ matrix.app }}" == "web" && "${{ needs.detect-changes.outputs.web }}" == "true" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.should-build.outputs.run == 'true'
 
       - name: Configure AWS credentials
+        if: steps.should-build.outputs.run == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.CI_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
+        if: steps.should-build.outputs.run == 'true'
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
+        if: steps.should-build.outputs.run == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push
+        if: steps.should-build.outputs.run == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
