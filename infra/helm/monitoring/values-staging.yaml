@@ -1,0 +1,44 @@
+# Staging: moderate resources, 15-day retention
+
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 15d
+      replicas: 1
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 20Gi
+  grafana:
+    persistence:
+      enabled: true
+      size: 1Gi
+      storageClassName: gp3
+
+loki:
+  loki:
+    limits_config:
+      retention_period: 360h  # 15d
+  singleBinary:
+    persistence:
+      size: 20Gi
+
+tempo:
+  tempo:
+    retention: 168h  # 7d
+  persistence:
+    size: 10Gi
+
+opentelemetry-collector:
+  config:
+    processors:
+      probabilistic_sampler:
+        sampling_percentage: 50
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, probabilistic_sampler, batch]
+          exporters: [otlphttp/tempo]

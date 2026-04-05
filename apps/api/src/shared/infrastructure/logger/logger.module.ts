@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { context, trace } from '@opentelemetry/api';
 import { ClsService } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
 import { CLS_REQUEST_ID, CLS_USER_ID } from '../cls/cls.constants';
@@ -27,9 +28,20 @@ import { CLS_REQUEST_ID, CLS_USER_ID } from '../cls/cls.constants';
               return id;
             },
             mixin: () => {
-              if (!cls.isActive()) return {};
-              const userId = cls.get(CLS_USER_ID);
-              return userId ? { userId } : {};
+              const otelCtx = trace.getSpan(context.active())?.spanContext();
+              const fields: Record<string, string> = {};
+
+              if (otelCtx?.traceId) {
+                fields.traceId = otelCtx.traceId;
+                fields.spanId = otelCtx.spanId;
+              }
+
+              if (cls.isActive()) {
+                const userId = cls.get(CLS_USER_ID);
+                if (userId) fields.userId = userId;
+              }
+
+              return fields;
             },
             redact: {
               paths: [

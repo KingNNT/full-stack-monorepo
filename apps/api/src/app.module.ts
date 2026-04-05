@@ -9,6 +9,7 @@ import { AppClsModule } from './shared/infrastructure/cls/cls.module';
 import { DrizzleModule } from './shared/infrastructure/database/drizzle.module';
 import { EventStoreModule } from './shared/infrastructure/event-store/event-store.module';
 import { AppLoggerModule } from './shared/infrastructure/logger/logger.module';
+import { MetricsModule } from './shared/infrastructure/metrics/metrics.module';
 import { HealthController } from './shared/presentation/health.controller';
 
 @Module({
@@ -25,6 +26,7 @@ import { HealthController } from './shared/presentation/health.controller';
     AppLoggerModule,
     DrizzleModule,
     EventStoreModule,
+    MetricsModule,
     UserModule,
     AuthModule,
     RbacModule,

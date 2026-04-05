@@ -1,0 +1,85 @@
+# Dev: minimal resources, short retention, local storage (kind cluster)
+# Uses 'standard' StorageClass (kind's rancher.io/local-path provisioner)
+
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 7d
+      replicas: 1
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: standard
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+  grafana:
+    adminPassword: admin
+    persistence:
+      enabled: false
+
+loki:
+  loki:
+    limits_config:
+      retention_period: 168h  # 7d
+  singleBinary:
+    persistence:
+      storageClass: standard
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 512Mi
+
+promtail:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+tempo:
+  tempo:
+    retention: 72h  # 3d
+  persistence:
+    storageClassName: standard
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+opentelemetry-collector:
+  config:
+    processors:
+      probabilistic_sampler:
+        sampling_percentage: 100
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, probabilistic_sampler, batch]
+          exporters: [otlphttp/tempo]
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

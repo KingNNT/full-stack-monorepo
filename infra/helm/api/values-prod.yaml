@@ -25,5 +25,6 @@ env:
   PORT: "8000"
   LOG_LEVEL: warn
   CORS_ALLOWED_ORIGINS: https://example.com
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317
 
 secrets: {}

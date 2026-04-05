@@ -58,6 +58,11 @@ make up-api / make up-web  # Start individual service + postgres
 make logs                  # Tail all logs
 make logs-api / make logs-web  # Tail individual service logs
 make clean                 # Stop containers, remove volumes and images
+
+# Monitoring
+make monitoring-up ENV=dev    # Deploy monitoring stack to dev
+make monitoring-down          # Remove monitoring stack
+make monitoring-port-forward  # Port-forward Grafana to localhost:3001
 ```
 
 ## Architecture
@@ -121,6 +126,17 @@ src/
 ```
 
 Key tech: React 19, TailwindCSS v4, NextAuth (beta), Radix UI + shadcn/ui, Zod validation, React Hook Form, Storybook.
+
+### Monitoring (`infra/helm/monitoring/`)
+
+Self-hosted observability stack on EKS:
+- **Metrics**: Prometheus (via kube-prometheus-stack) — scrapes K8s + API `/metrics`
+- **Logs**: Loki + Promtail — collects stdout/stderr from all pods
+- **Traces**: Tempo + OpenTelemetry Collector — receives traces from API OTel SDK
+- **Dashboards**: Grafana — unified view with logs-traces-metrics correlation
+
+API instrumented with `@opentelemetry/sdk-node` auto-instrumentation (HTTP, NestJS, PostgreSQL).
+Custom metrics available via `MetricsService` injectable.
 
 ## Tooling
 

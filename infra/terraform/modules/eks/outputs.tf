@@ -32,3 +32,8 @@ output "cluster_security_group_id" {
   description = "EKS cluster security group ID"
   value       = module.eks.cluster_security_group_id
 }
+
+output "ebs_csi_role_arn" {
+  description = "IAM role ARN for EBS CSI driver"
+  value       = try(aws_iam_role.ebs_csi[0].arn, "")
+}

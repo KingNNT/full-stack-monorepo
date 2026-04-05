@@ -60,3 +60,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "create_ebs_csi_role" {
+  description = "Create IAM role for EBS CSI driver"
+  type        = bool
+  default     = true
+}
