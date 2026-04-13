@@ -80,7 +80,71 @@ Cross-cutting concerns live in `src/shared/` with the same layering.
 - One controller per bounded context, one method per endpoint
 - Flow: receive DTO → execute command via `CommandBus` → transform result to response DTO
 - Use `@ApiTags()`, `@ApiOperation()`, `@ApiResponse()` for Swagger documentation
+- `@ApiTags()` values must use title-case display names — capitalize each segment and keep acronyms uppercase (e.g. `Auth`, `RBAC`, `RBAC / Roles`, `RBAC / Permissions`). The tag is a human-facing section header in Swagger UI and must not mirror the lowercase route prefix.
 - Response DTOs use `@Exclude()` / `@Expose({ name: 'snake_case' })` for field transformation
+
+## Response Format
+
+All API responses (success and error) MUST be wrapped in a consistent envelope. Controllers return bare DTOs — a global `TransformInterceptor` wraps successes, and `AllExceptionsFilter` formats errors. Never wrap manually inside a controller.
+
+### Success envelope
+
+```json
+{
+  "status_code": 200,
+  "success": true,
+  "message": "OK",
+  "data": { /* DTO or list payload */ }
+}
+```
+
+- Fields are `snake_case` — matches the FE `ISuccessResponse<T>` contract
+- `status_code` mirrors the HTTP status
+- `message` is a short human-readable summary (default `"OK"` / `"Created"`) — localize on the FE, not here
+- `data` holds the DTO; never `null` on success (use `{}` or an empty list instead)
+
+### Error envelope
+
+```json
+{
+  "status_code": 400,
+  "success": false,
+  "message": "Email is required",
+  "error": "VALIDATION_ERROR"
+}
+```
+
+- `error` is a stable `UPPER_SNAKE_CASE` code the FE maps to i18n messages — never change casually
+- Map domain exceptions to 4xx codes; only unexpected failures become 500
+- Include `errorTraceId` when available (from CLS / request context) for debugging
+
+### List format
+
+List endpoints return `items` plus a `meta` block inside `data`:
+
+```json
+{
+  "status_code": 200,
+  "success": true,
+  "message": "OK",
+  "data": {
+    "items": [ /* DTOs */ ],
+    "meta": {
+      "page": 1,
+      "page_size": 20,
+      "total_items": 137,
+      "total_pages": 7,
+      "has_next": true,
+      "has_previous": false
+    }
+  }
+}
+```
+
+- Default `page=1`, `page_size=20`, cap `page_size` at 100
+- Query params: `?page=`, `?page_size=`, `?sort=field:asc|desc`, `?filter[field]=value`
+- Always return `items` (even empty `[]`) and `meta` — never omit the keys
+- Cursor-based pagination: include `cursor` / `next_cursor` inside `meta` instead of page fields; document which mode the endpoint uses in its `@ApiResponse()`
 
 ## Database (Drizzle)
 

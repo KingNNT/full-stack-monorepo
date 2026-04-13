@@ -55,6 +55,66 @@ paths:
 - Validation messages use i18n keys via `t()` from `useTranslations()`
 - Error display: catch API errors in `onSubmit`, map to user-facing messages
 
+## API Response Format
+
+All BE responses use a consistent envelope — `BaseHttpClient.request()` unwraps it. API clients in `src/apis/` should type the inner payload only; never include the envelope in public return types.
+
+### Success envelope
+
+```ts
+interface ISuccessResponse<TData> {
+  status_code: number;
+  success: true;
+  message: string;
+  data: TData;
+}
+```
+
+- `BaseHttpClient` strips the envelope and returns `data` directly to callers
+- Field names are `snake_case` from the wire — keep FE types matching (`access_token`, `user_id`, etc.), do NOT camelCase them at the boundary
+
+### Error envelope
+
+```ts
+interface IErrorResponse<TErrorCode> {
+  status_code: number;
+  success: false;
+  message: string;
+  error?: TErrorCode;
+}
+```
+
+- Caught in the `afterResponse` hook and thrown as `HttpStatusError` with `statusCode` + parsed body
+- Map `error` codes (e.g. `INVALID_CREDENTIALS`, `EMAIL_EXISTS`) to i18n keys via a lookup table — never surface raw codes to users
+- Fall back to a generic i18n message when the code is unknown
+
+### List format
+
+List endpoints return `data: { items, meta }`:
+
+```ts
+interface IListMeta {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+}
+
+interface IListData<T> {
+  items: T[];
+  meta: IListMeta;
+}
+
+type IListResponse<T> = ISuccessResponse<IListData<T>>;
+```
+
+- API client methods return `IListData<T>` (already unwrapped), not the raw envelope
+- Query params: `?page=`, `?page_size=`, `?sort=field:asc|desc`, `?filter[field]=value` — build via `URLSearchParams`
+- `items` and `meta` are always present (empty `[]` when no results) — never guard with `?.`
+- Cursor mode: `meta` carries `cursor` / `next_cursor` instead of page fields — check the endpoint's type
+
 ## State Management
 
 - Zustand stores with `devtools` + `persist` middleware stack
