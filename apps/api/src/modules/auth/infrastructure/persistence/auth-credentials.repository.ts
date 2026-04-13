@@ -66,4 +66,50 @@ export class AuthCredentialsRepository implements IAuthCredentialsRepository {
       { lastLoginAt: at },
     );
   }
+
+  async findByUserId(userId: string): Promise<AuthCredentialRecord | null> {
+    const results = await this.drizzle.db
+      .select({
+        userId: authCredentialsTable.userId,
+        email: authCredentialsTable.email,
+        username: authCredentialsTable.username,
+        passwordHash: authCredentialsTable.passwordHash,
+        isActive: authCredentialsTable.isActive,
+      })
+      .from(authCredentialsTable)
+      .where(
+        and(
+          eq(authCredentialsTable.userId, userId),
+          isNull(authCredentialsTable.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    return results[0] ?? null;
+  }
+
+  async updateUsername(userId: string, username: string): Promise<void> {
+    await this.audit.update(
+      authCredentialsTable,
+      and(
+        eq(authCredentialsTable.userId, userId),
+        isNull(authCredentialsTable.deletedAt),
+      )!,
+      { username },
+    );
+  }
+
+  async updatePasswordHash(
+    userId: string,
+    passwordHash: string,
+  ): Promise<void> {
+    await this.audit.update(
+      authCredentialsTable,
+      and(
+        eq(authCredentialsTable.userId, userId),
+        isNull(authCredentialsTable.deletedAt),
+      )!,
+      { passwordHash },
+    );
+  }
 }

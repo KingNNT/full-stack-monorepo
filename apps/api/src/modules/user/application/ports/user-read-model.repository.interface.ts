@@ -13,4 +13,5 @@ export interface UserReadRecord {
 
 export interface IUserReadModelRepository {
   applyProjection(events: ReadonlyArray<DomainEventBase>): Promise<void>;
+  findById(userId: string): Promise<UserReadRecord | null>;
 }

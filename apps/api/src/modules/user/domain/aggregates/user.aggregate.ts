@@ -1,6 +1,7 @@
 import { AggregateRootBase } from '../../../../shared/domain/aggregate-root.base';
 import type { DomainEventBase } from '../../../../shared/domain/domain-event.base';
 import { UserCreatedEvent } from '../events/user-created.event';
+import { UserProfileUpdatedEvent } from '../events/user-profile-updated.event';
 import { Email } from '../value-objects/email.vo';
 import { UserId } from '../value-objects/user-id.vo';
 import { Username } from '../value-objects/username.vo';
@@ -52,6 +53,22 @@ export class UserAggregate extends AggregateRootBase {
     return aggregate;
   }
 
+  updateProfile(params: { username: string }): void {
+    const username = Username.create(params.username);
+
+    if (username.value === this._username.value) {
+      return;
+    }
+
+    this.apply(
+      new UserProfileUpdatedEvent({
+        userId: this._id.value,
+        username: username.value,
+        updatedAt: new Date(),
+      }),
+    );
+  }
+
   // Factory: reconstitute from stored events
   static reconstitute(events: DomainEventBase[]): UserAggregate {
     const aggregate = new UserAggregate();
@@ -66,6 +83,8 @@ export class UserAggregate extends AggregateRootBase {
   protected applyEvent(event: DomainEventBase): void {
     if (event instanceof UserCreatedEvent) {
       this.applyUserCreated(event);
+    } else if (event instanceof UserProfileUpdatedEvent) {
+      this.applyUserProfileUpdated(event);
     }
   }
 
@@ -74,5 +93,9 @@ export class UserAggregate extends AggregateRootBase {
     this._email = Email.create(event.payload.email);
     this._username = Username.create(event.payload.username);
     this._isActive = true;
+  }
+
+  private applyUserProfileUpdated(event: UserProfileUpdatedEvent): void {
+    this._username = Username.create(event.payload.username);
   }
 }

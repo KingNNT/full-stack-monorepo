@@ -5,6 +5,7 @@ import type {
   StoredEventData,
 } from '../../../../../shared/infrastructure/event-store/event-store.service';
 import { UserCreatedEvent } from '../../../domain/events/user-created.event';
+import { UserProfileUpdatedEvent } from '../../../domain/events/user-profile-updated.event';
 
 @Injectable()
 export class UserEventSerializer implements IEventSerializer {
@@ -33,6 +34,15 @@ export class UserEventSerializer implements IEventSerializer {
             email: data.payload.email as string,
             username: data.payload.username as string,
             createdAt: new Date(data.payload.createdAt as string),
+          },
+          options,
+        );
+      case 'UserProfileUpdated':
+        return new UserProfileUpdatedEvent(
+          {
+            userId: data.payload.userId as string,
+            username: data.payload.username as string,
+            updatedAt: new Date(data.payload.updatedAt as string),
           },
           options,
         );

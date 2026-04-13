@@ -3,8 +3,10 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 // Application handlers
+import { ChangePasswordHandler } from './application/commands/change-password/change-password.handler';
 import { LoginHandler } from './application/commands/login/login.handler';
 import { RegisterHandler } from './application/commands/register/register.handler';
+import { AuthUserProfileUpdatedHandler } from './application/event-handlers/user-profile-updated.handler';
 import { AUTH_CREDENTIALS_REPOSITORY_TOKEN } from './application/ports/auth-credentials.repository.interface';
 import { PASSWORD_HASHER_TOKEN } from './application/ports/password-hasher.interface';
 // Application port tokens
@@ -19,11 +21,13 @@ import { AuthCredentialsRepository } from './infrastructure/persistence/auth-cre
 // Presentation
 import { AuthController } from './presentation/controllers/auth.controller';
 
-const CommandHandlers = [LoginHandler, RegisterHandler];
+const CommandHandlers = [LoginHandler, RegisterHandler, ChangePasswordHandler];
+const EventHandlers = [AuthUserProfileUpdatedHandler];
 
 @Module({
   imports: [CqrsModule, PassportModule, JwtModule.register({})],
   controllers: [AuthController],
+  exports: [PassportModule, AUTH_CREDENTIALS_REPOSITORY_TOKEN],
   providers: [
     // Infrastructure services
     TokenServiceImpl,
@@ -48,6 +52,7 @@ const CommandHandlers = [LoginHandler, RegisterHandler];
 
     // CQRS handlers
     ...CommandHandlers,
+    ...EventHandlers,
   ],
 })
 export class AuthModule {}
