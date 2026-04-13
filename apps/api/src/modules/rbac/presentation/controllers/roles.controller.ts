@@ -21,9 +21,9 @@ import {
   RBAC_REPOSITORY_TOKEN,
 } from '../../application/ports/rbac.repository.interface';
 import { RequirePermissions } from '../decorators/require-permissions.decorator';
-import type { CreateRoleRequestDto } from '../dtos/create-role.request.dto';
-import type { SyncPermissionsRequestDto } from '../dtos/sync-permissions.request.dto';
-import type { UpdateRoleRequestDto } from '../dtos/update-role.request.dto';
+import { CreateRoleRequestDto } from '../dtos/create-role.request.dto';
+import { SyncPermissionsRequestDto } from '../dtos/sync-permissions.request.dto';
+import { UpdateRoleRequestDto } from '../dtos/update-role.request.dto';
 import { PermissionGuard } from '../guards/permission.guard';
 
 @ApiTags('RBAC / Roles')

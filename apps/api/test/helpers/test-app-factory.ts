@@ -22,6 +22,9 @@ export async function createTestApp(
   // Silence pino logs in tests unless explicitly configured
   process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? 'silent';
 
+  // Disable throttling for e2e tests (sequential calls would otherwise exhaust limits)
+  process.env.THROTTLE_DISABLED = 'true';
+
   // Set env vars so ConfigService picks them up (e.g. dynamic DATABASE_URL from TestContainers)
   for (const [key, value] of Object.entries(envOverrides)) {
     process.env[key] = value;

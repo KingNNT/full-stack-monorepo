@@ -6,13 +6,18 @@ import { LoginCommand } from '../../application/commands/login/login.command';
 import type { LoginResult } from '../../application/commands/login/login.result';
 import { RegisterCommand } from '../../application/commands/register/register.command';
 import type { RegisterResult } from '../../application/commands/register/register.result';
-import type { LoginRequestDto } from '../dtos/login.request.dto';
+import { LoginRequestDto } from '../dtos/login.request.dto';
 import { LoginResponseDto } from '../dtos/login.response.dto';
-import type { RegisterRequestDto } from '../dtos/register.request.dto';
+import { RegisterRequestDto } from '../dtos/register.request.dto';
 import { RegisterResponseDto } from '../dtos/register.response.dto';
 
 @ApiTags('Auth')
-@Throttle({ default: { ttl: 60000, limit: 5 } })
+@Throttle({
+  default: {
+    ttl: 60000,
+    limit: process.env.THROTTLE_DISABLED === 'true' ? 100_000 : 5,
+  },
+})
 @Controller('auth')
 export class AuthController {
   constructor(private readonly commandBus: CommandBus) {}

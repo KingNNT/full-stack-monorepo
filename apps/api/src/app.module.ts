@@ -20,7 +20,13 @@ import { HealthController } from './shared/presentation/health.controller';
         process.env.NODE_ENV === 'test' ? ['.env.test', '.env'] : '.env',
     }),
     ThrottlerModule.forRoot({
-      throttlers: [{ name: 'default', ttl: 60000, limit: 30 }],
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60000,
+          limit: process.env.THROTTLE_DISABLED === 'true' ? 100_000 : 30,
+        },
+      ],
     }),
     AppClsModule,
     AppLoggerModule,

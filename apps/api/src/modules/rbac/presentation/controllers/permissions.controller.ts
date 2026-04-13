@@ -21,8 +21,8 @@ import {
   RBAC_REPOSITORY_TOKEN,
 } from '../../application/ports/rbac.repository.interface';
 import { RequirePermissions } from '../decorators/require-permissions.decorator';
-import type { CreatePermissionRequestDto } from '../dtos/create-permission.request.dto';
-import type { UpdatePermissionRequestDto } from '../dtos/update-permission.request.dto';
+import { CreatePermissionRequestDto } from '../dtos/create-permission.request.dto';
+import { UpdatePermissionRequestDto } from '../dtos/update-permission.request.dto';
 import { PermissionGuard } from '../guards/permission.guard';
 
 @ApiTags('RBAC / Permissions')
