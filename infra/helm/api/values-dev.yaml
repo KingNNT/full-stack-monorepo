@@ -32,6 +32,6 @@ env:
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector-opentelemetry-collector.monitoring.svc.cluster.local:4317
 
 secrets:
-  DATABASE_URL: postgresql://postgres:password@postgres.dev.svc.cluster.local:5432/inviduality_dev
+  DATABASE_URL: postgresql://postgres:password@postgres.dev.svc.cluster.local:5432/fullstack_monorepo_dev
   JWT_ACCESS_SECRET: dev-access-secret-min-32-chars-long-here
   JWT_REFRESH_SECRET: dev-refresh-secret-min-32-chars-long

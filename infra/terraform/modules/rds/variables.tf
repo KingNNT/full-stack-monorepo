@@ -24,7 +24,7 @@ variable "allocated_storage" {
 variable "db_name" {
   description = "Database name"
   type        = string
-  default     = "inviduality"
+  default     = "fullstack_monorepo"
 }
 
 variable "username" {

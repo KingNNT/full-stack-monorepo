@@ -38,7 +38,7 @@ async function bootstrap(): Promise<void> {
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('Inviduality API')
+      .setTitle('Fullstack Monorepo API')
       .setDescription('Event-sourced NestJS API with DDD + CQRS')
       .setVersion('1.0')
       .addBearerAuth()

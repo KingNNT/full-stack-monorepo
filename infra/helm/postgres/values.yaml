@@ -7,7 +7,7 @@ storage:
   size: 1Gi
 
 credentials:
-  database: inviduality_dev
+  database: fullstack_monorepo_dev
   username: postgres
   password: password
 

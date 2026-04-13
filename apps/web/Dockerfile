@@ -12,7 +12,7 @@ RUN cat <<'EOF' > pnpm-workspace.yaml
 packages:
   - apps/web
 EOF
-RUN pnpm install --frozen-lockfile --filter @inviduality/web...
+RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/web...
 
 WORKDIR /app/apps/web
 COPY apps/web/ .

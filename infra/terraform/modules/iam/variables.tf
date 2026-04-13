@@ -23,7 +23,7 @@ variable "eks_oidc_provider_url" {
 variable "github_org" {
   description = "GitHub organization name for OIDC federation"
   type        = string
-  default     = "inviduality"
+  default     = "fullstack-monorepo"
 }
 
 variable "github_repo" {

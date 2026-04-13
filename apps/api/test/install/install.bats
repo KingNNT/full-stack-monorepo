@@ -44,16 +44,16 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: inviduality_dev
+      POSTGRES_DB: fullstack_monorepo_dev
 
   app:
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/inviduality_dev
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/fullstack_monorepo_dev
 TMPL
 
   # .env.example
   cat > "$TEMPLATE_DIR/.env.example" << 'TMPL'
-DATABASE_URL=postgresql://postgres:password@localhost:5432/inviduality_dev
+DATABASE_URL=postgresql://postgres:password@localhost:5432/fullstack_monorepo_dev
 EVENTSTORE_CONNECTION_STRING=esdb://localhost:2113?tls=false
 PORT=3000
 TMPL
@@ -149,7 +149,7 @@ Y"
   [ "$status" -eq 0 ]
 
   # Original template DB name should be gone
-  run grep 'inviduality_dev' "$TEST_WORK_DIR/awesome-api/docker-compose.yml"
+  run grep 'fullstack_monorepo_dev' "$TEST_WORK_DIR/awesome-api/docker-compose.yml"
   [ "$status" -eq 1 ]
 }
 
@@ -164,7 +164,7 @@ Y"
   run grep 'my_api_dev' "$TEST_WORK_DIR/my-api/.env.example"
   [ "$status" -eq 0 ]
 
-  run grep 'inviduality_dev' "$TEST_WORK_DIR/my-api/.env.example"
+  run grep 'fullstack_monorepo_dev' "$TEST_WORK_DIR/my-api/.env.example"
   [ "$status" -eq 1 ]
 }
 

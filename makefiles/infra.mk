@@ -32,10 +32,10 @@ k8s-up: ## Start full K8s dev environment (LocalStack + kind + build + deploy)
 	@kubectl wait --for=condition=ready pod -l app=postgres -n dev --timeout=60s >/dev/null 2>&1
 	@kubectl port-forward svc/postgres 5433:5432 -n dev >/dev/null 2>&1 & PF_PID=$$!; \
 		sleep 3; \
-		DATABASE_URL="postgresql://postgres:password@localhost:5433/inviduality_dev" \
-			pnpm --filter @inviduality/api exec drizzle-kit migrate >/dev/null 2>&1; \
-		DATABASE_URL="postgresql://postgres:password@localhost:5433/inviduality_dev" \
-			pnpm --filter @inviduality/api run db:seed >/dev/null 2>&1; \
+		DATABASE_URL="postgresql://postgres:password@localhost:5433/fullstack_monorepo_dev" \
+			pnpm --filter @fullstack-monorepo-app/api exec drizzle-kit migrate >/dev/null 2>&1; \
+		DATABASE_URL="postgresql://postgres:password@localhost:5433/fullstack_monorepo_dev" \
+			pnpm --filter @fullstack-monorepo-app/api run db:seed >/dev/null 2>&1; \
 		kill $$PF_PID 2>/dev/null || true
 	@echo "\033[36m[7/8]\033[0m Deploying API + Web..."
 	@helm upgrade --install api ./infra/helm/api \

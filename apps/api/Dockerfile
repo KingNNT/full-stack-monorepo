@@ -12,7 +12,7 @@ RUN cat <<'EOF' > pnpm-workspace.yaml
 packages:
   - apps/api
 EOF
-RUN pnpm install --frozen-lockfile --filter @inviduality/api...
+RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/api...
 
 WORKDIR /app/apps/api
 COPY apps/api/ .
@@ -51,7 +51,7 @@ TSEOF
 RUN pnpm exec nest build
 
 # Use pnpm deploy for a self-contained production directory
-RUN pnpm --filter @inviduality/api deploy --legacy --prod /app/deploy
+RUN pnpm --filter @fullstack-monorepo-app/api deploy --legacy --prod /app/deploy
 
 FROM node:24-alpine AS runner
 

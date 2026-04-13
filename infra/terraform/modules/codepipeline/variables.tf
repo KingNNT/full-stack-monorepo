@@ -49,7 +49,7 @@ variable "notification_sns_topic_arn" {
 variable "source_repo" {
   description = "GitHub repository (owner/repo format)"
   type        = string
-  default     = "inviduality/fullstack-monorepos"
+  default     = "fullstack-monorepos"
 }
 
 variable "source_branch" {
