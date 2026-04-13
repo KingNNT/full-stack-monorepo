@@ -26,7 +26,7 @@ import type { SyncPermissionsRequestDto } from '../dtos/sync-permissions.request
 import type { UpdateRoleRequestDto } from '../dtos/update-role.request.dto';
 import { PermissionGuard } from '../guards/permission.guard';
 
-@ApiTags('rbac/roles')
+@ApiTags('RBAC / Roles')
 @Controller('rbac/roles')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class RolesController {

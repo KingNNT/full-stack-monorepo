@@ -21,7 +21,7 @@ import type { AssignPermissionRequestDto } from '../dtos/assign-permission.reque
 import type { AssignRoleRequestDto } from '../dtos/assign-role.request.dto';
 import { PermissionGuard } from '../guards/permission.guard';
 
-@ApiTags('rbac')
+@ApiTags('RBAC')
 @Controller('rbac')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class RbacAssignmentController {

@@ -11,7 +11,7 @@ import { LoginResponseDto } from '../dtos/login.response.dto';
 import type { RegisterRequestDto } from '../dtos/register.request.dto';
 import { RegisterResponseDto } from '../dtos/register.response.dto';
 
-@ApiTags('auth')
+@ApiTags('Auth')
 @Throttle({ default: { ttl: 60000, limit: 5 } })
 @Controller('auth')
 export class AuthController {

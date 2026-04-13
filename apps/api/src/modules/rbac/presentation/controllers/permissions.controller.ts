@@ -25,7 +25,7 @@ import type { CreatePermissionRequestDto } from '../dtos/create-permission.reque
 import type { UpdatePermissionRequestDto } from '../dtos/update-permission.request.dto';
 import { PermissionGuard } from '../guards/permission.guard';
 
-@ApiTags('rbac/permissions')
+@ApiTags('RBAC / Permissions')
 @Controller('rbac/permissions')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class PermissionsController {
