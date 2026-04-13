@@ -126,6 +126,48 @@ describe('AuthCredentialsRepository (integration)', () => {
     expect(record.lastLoginAt).toEqual(loginAt);
   });
 
+  it('findByUserId() returns credential record', async () => {
+    const userId = randomUUID();
+    await repository.create(userId, 'find@example.com', 'finduser', '$hash');
+
+    const result = await repository.findByUserId(userId);
+
+    expect(result).not.toBeNull();
+    expect(result?.email).toBe('find@example.com');
+    expect(result?.username).toBe('finduser');
+  });
+
+  it('findByUserId() returns null for missing user', async () => {
+    const result = await repository.findByUserId(randomUUID());
+    expect(result).toBeNull();
+  });
+
+  it('updateUsername() changes username for given user', async () => {
+    const userId = randomUUID();
+    await repository.create(userId, 'rename@example.com', 'oldname', '$hash');
+
+    await repository.updateUsername(userId, 'newname');
+
+    const results = await db
+      .select()
+      .from(authCredentialsTable)
+      .where(eq(authCredentialsTable.userId, userId));
+    expect(results[0].username).toBe('newname');
+  });
+
+  it('updatePasswordHash() changes hash for given user', async () => {
+    const userId = randomUUID();
+    await repository.create(userId, 'pw@example.com', 'pwuser', '$old');
+
+    await repository.updatePasswordHash(userId, '$new');
+
+    const results = await db
+      .select()
+      .from(authCredentialsTable)
+      .where(eq(authCredentialsTable.userId, userId));
+    expect(results[0].passwordHash).toBe('$new');
+  });
+
   it('throws on duplicate email', async () => {
     await repository.create(
       randomUUID(),

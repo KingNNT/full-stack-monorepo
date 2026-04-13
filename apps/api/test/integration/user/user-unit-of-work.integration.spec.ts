@@ -40,7 +40,10 @@ describe('UserUnitOfWork (integration)', () => {
     eventStoreService = new EventStoreService(drizzleServiceMock);
     serializer = new UserEventSerializer();
     const auditService = new AuditableTableService(drizzleServiceMock, mockCls);
-    readModelRepo = new UserReadModelRepository(auditService);
+    readModelRepo = new UserReadModelRepository(
+      auditService,
+      drizzleServiceMock,
+    );
     unitOfWork = new UserUnitOfWork(
       eventStoreService,
       serializer,

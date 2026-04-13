@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { eq } from 'drizzle-orm';
 import { UserCreatedEvent } from '../../../src/modules/user/domain/events/user-created.event';
+import { UserProfileUpdatedEvent } from '../../../src/modules/user/domain/events/user-profile-updated.event';
 import { UserReadModelRepository } from '../../../src/modules/user/infrastructure/persistence/read-model/user-read-model.repository';
 import { AuditableTableService } from '../../../src/shared/infrastructure/database/auditable-table.service';
 import type { DrizzleService } from '../../../src/shared/infrastructure/database/drizzle.service';
@@ -30,7 +31,7 @@ describe('UserReadModelRepository (integration)', () => {
         db.transaction(fn),
     } as DrizzleService;
     const auditService = new AuditableTableService(drizzleServiceMock, mockCls);
-    repository = new UserReadModelRepository(auditService);
+    repository = new UserReadModelRepository(auditService, drizzleServiceMock);
   }, 60_000);
 
   afterAll(async () => {
@@ -83,6 +84,57 @@ describe('UserReadModelRepository (integration)', () => {
     await repository.applyProjection([event1]);
 
     await expect(repository.applyProjection([event2])).rejects.toThrow();
+  });
+
+  it('applyProjection() updates username on UserProfileUpdatedEvent', async () => {
+    const userId = randomUUID();
+    await repository.applyProjection([
+      new UserCreatedEvent({
+        userId,
+        email: 'profile@example.com',
+        username: 'oldname',
+        createdAt: new Date(),
+      }),
+    ]);
+
+    await repository.applyProjection([
+      new UserProfileUpdatedEvent({
+        userId,
+        username: 'newname',
+        updatedAt: new Date(),
+      }),
+    ]);
+
+    const results = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    expect(results[0].username).toBe('newname');
+  });
+
+  it('findById() returns null for missing user', async () => {
+    const result = await repository.findById(randomUUID());
+    expect(result).toBeNull();
+  });
+
+  it('findById() returns user record after creation', async () => {
+    const userId = randomUUID();
+    await repository.applyProjection([
+      new UserCreatedEvent({
+        userId,
+        email: 'find@example.com',
+        username: 'finduser',
+        createdAt: new Date(),
+      }),
+    ]);
+
+    const result = await repository.findById(userId);
+    expect(result).toEqual({
+      id: userId,
+      email: 'find@example.com',
+      username: 'finduser',
+      isActive: true,
+    });
   });
 
   it('throws on duplicate username', async () => {

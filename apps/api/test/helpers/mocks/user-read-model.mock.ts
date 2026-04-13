@@ -3,5 +3,6 @@ import type { IUserReadModelRepository } from '../../../src/modules/user/applica
 export function createMockUserReadModelRepository(): jest.Mocked<IUserReadModelRepository> {
   return {
     applyProjection: jest.fn().mockResolvedValue(undefined),
+    findById: jest.fn().mockResolvedValue(null),
   };
 }
