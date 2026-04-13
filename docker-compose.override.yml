@@ -4,9 +4,13 @@ services:
       - "5432:5432"
 
   api:
+    environment:
+      NODE_ENV: development
     ports:
       - "${API_PORT:-8000}:8000"
 
   web:
+    environment:
+      NODE_ENV: development
     ports:
       - "${WEB_PORT:-3000}:3000"

@@ -3,6 +3,14 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema/index';
 
+const DEFAULT_USERS = [
+  {
+    email: 'admin@example.com',
+    username: 'admin',
+    password: 'admin123456',
+  },
+];
+
 const PERMISSIONS = [
   // Roles management
   { name: 'roles.create', description: 'Create roles' },
@@ -104,25 +112,54 @@ async function seed() {
   }
   console.log(`  Synced ${allPermissions.length} permissions to super-admin`);
 
-  // 4. Assign super-admin to first user (if exists)
-  const firstUser = await db
-    .select()
-    .from(schema.usersTable)
-    .limit(1)
-    .then((r) => r[0] ?? null);
+  // 4. Register default users via API (ensures event sourcing + password hashing)
+  const apiBaseUrl = process.env.API_BASE_URL ?? 'http://localhost:8000';
+  for (const user of DEFAULT_USERS) {
+    const existing = await db
+      .select()
+      .from(schema.authCredentialsTable)
+      .where(eq(schema.authCredentialsTable.email, user.email))
+      .limit(1);
 
-  if (firstUser) {
+    if (existing.length > 0) {
+      console.log(`  User exists: ${user.email}`);
+      continue;
+    }
+
+    const res = await fetch(`${apiBaseUrl}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(
+        `Failed to register ${user.email} (HTTP ${res.status}): ${body}`,
+      );
+    }
+    console.log(`  Created user: ${user.email} / ${user.password}`);
+  }
+
+  // 5. Assign super-admin role to all seeded users
+  for (const user of DEFAULT_USERS) {
+    const row = await db
+      .select()
+      .from(schema.usersTable)
+      .where(eq(schema.usersTable.email, user.email))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!row) continue;
+
     await db
       .insert(schema.modelHasRolesTable)
       .values({
         modelType: 'user',
-        modelId: firstUser.id,
+        modelId: row.id,
         roleId: superAdminRole.id,
       })
       .onConflictDoNothing();
-    console.log(`  Assigned super-admin to user: ${firstUser.email}`);
-  } else {
-    console.log('  No users found — skip super-admin assignment');
+    console.log(`  Assigned super-admin to user: ${row.email}`);
   }
 
   console.log('Seed complete.');
