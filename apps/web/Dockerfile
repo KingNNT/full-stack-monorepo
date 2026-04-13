@@ -1,3 +1,24 @@
+FROM node:24-alpine AS dev
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+
+RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/web...
+
+WORKDIR /app/apps/web
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+EXPOSE 3000
+
+CMD ["pnpm", "dev"]
+
 FROM node:24-alpine AS builder
 
 WORKDIR /app

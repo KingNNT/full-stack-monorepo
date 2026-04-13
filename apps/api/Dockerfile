@@ -1,3 +1,20 @@
+FROM node:24-alpine AS dev
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+
+RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/api...
+
+WORKDIR /app/apps/api
+
+EXPOSE 8000
+
+CMD ["pnpm", "dev"]
+
 FROM node:24-alpine AS builder
 
 WORKDIR /app

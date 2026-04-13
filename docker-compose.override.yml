@@ -4,13 +4,30 @@ services:
       - "5432:5432"
 
   api:
+    build:
+      target: dev
     environment:
       NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
     ports:
       - "${API_PORT:-8000}:8000"
 
   web:
+    build:
+      target: dev
     environment:
       NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
     ports:
       - "${WEB_PORT:-3000}:3000"
