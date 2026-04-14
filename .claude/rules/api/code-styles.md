@@ -83,18 +83,32 @@ Cross-cutting concerns live in `src/shared/` with the same layering.
 - `@ApiTags()` values must use title-case display names — capitalize each segment and keep acronyms uppercase (e.g. `Auth`, `RBAC`, `RBAC / Roles`, `RBAC / Permissions`). The tag is a human-facing section header in Swagger UI and must not mirror the lowercase route prefix.
 - Response DTOs use `@Exclude()` / `@Expose({ name: 'snake_case' })` for field transformation
 
-## Request Payload Casing
+## Casing: Wire vs. Code
+
+**The wire casing rules below apply ONLY at the HTTP boundary (DTOs serialized to/from the network). Internal TypeScript code MUST keep normal TS conventions — `camelCase` for variables, properties, parameters, and function names; `PascalCase` for classes/types.**
+
+### Wire (HTTP boundary)
 
 | Location                      | Casing       | Example                                |
 | ----------------------------- | ------------ | -------------------------------------- |
 | URL query params (`@Query()`) | `kebab-case` | `?page-size=20&sort-by=created-at`     |
-| Request body (`@Body()`)      | `snake_case` | `{ "old_password": "...", "new_password": "..." }` |
 | Path params                   | `kebab-case` | `/users/:user-id/roles`                |
+| Request body (`@Body()`)      | `snake_case` | `{ "old_password": "...", "new_password": "..." }` |
+| Response envelope & `data`    | `snake_case` | `{ "status_code": 200, "data": { "user_id": "..." } }` |
 
-- Multi-word body fields MUST be `snake_case` — matches the response envelope (`ISuccessResponse<T>` contract) so FE sees a single case convention over the wire.
-- Query params MUST be `kebab-case` — reserve `snake_case` for JSON payloads only; keep URLs URL-idiomatic.
-- Single-word fields (`email`, `password`, `name`) are unambiguous — no transform needed either way.
-- In TypeScript DTOs, declare the property with the wire name directly (e.g. `old_password!: string`) rather than relying on class-transformer aliasing on input DTOs — keeps validators readable.
+- Single-word fields (`email`, `password`, `name`) are unambiguous — no transform needed.
+- The wire rule is a contract with the FE; do not let it leak into domain/application/infrastructure layers.
+
+### Code (inside the API)
+
+- Aggregates, value objects, commands, queries, handlers, repositories, services: **always `camelCase`** on properties and variables (e.g. `oldPassword`, `pageSize`, `userId`).
+- Drizzle schema columns stay `camelCase` in TS (e.g. `createdAt`) — the DB column name is declared via the second arg to `timestamp('created_at')`.
+
+### Translating between wire and code
+
+- **Request body**: DTOs declare the wire name directly (e.g. `old_password!: string`) so class-validator sees the incoming key. In the controller, map to a camelCase command: `new ChangePasswordCommand({ oldPassword: dto.old_password, newPassword: dto.new_password })`. The command and everything downstream uses `camelCase`.
+- **Query / path params**: NestJS does not auto-transform kebab → camel. Use `@Query('page-size') pageSize: number` to bind the kebab wire name to a camelCase parameter, or accept a DTO and map fields explicitly.
+- **Response DTOs**: keep `camelCase` fields on the class and use `@Expose({ name: 'snake_case_name' })` + `@Exclude()` so `ClassSerializerInterceptor` emits snake_case JSON. Never store snake_case on the class itself.
 
 ## Response Format
 
