@@ -48,8 +48,8 @@ describe('POST /auth/register (e2e)', () => {
     });
 
     expect(res.status).toBe(201);
-    expect(res.body.user_id).toBeDefined();
-    expect(typeof res.body.user_id).toBe('string');
+    expect(res.body.data.user_id).toBeDefined();
+    expect(typeof res.body.data.user_id).toBe('string');
   });
 
   it('user is stored in users table', async () => {
@@ -62,7 +62,7 @@ describe('POST /auth/register (e2e)', () => {
     const results = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.id, res.body.user_id));
+      .where(eq(usersTable.id, res.body.data.user_id));
     const user = results[0];
     expect(user).toBeDefined();
     expect(user.email).toBe('dbcheck@example.com');
@@ -78,7 +78,7 @@ describe('POST /auth/register (e2e)', () => {
     const results = await db
       .select()
       .from(authCredentialsTable)
-      .where(eq(authCredentialsTable.userId, res.body.user_id));
+      .where(eq(authCredentialsTable.userId, res.body.data.user_id));
     const cred = results[0];
     expect(cred).toBeDefined();
     expect(cred.email).toBe('credcheck@example.com');

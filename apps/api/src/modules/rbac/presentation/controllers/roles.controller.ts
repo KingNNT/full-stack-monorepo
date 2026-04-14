@@ -41,7 +41,10 @@ export class RolesController {
   async create(@Body() dto: CreateRoleRequestDto) {
     const existing = await this.rbacRepo.findRoleByName(dto.name);
     if (existing) {
-      throw new ConflictException('Role name already exists');
+      throw new ConflictException({
+        message: 'Role name already exists',
+        errorCode: 'ROLE_NAME_EXISTS',
+      });
     }
     return this.rbacRepo.createRole(dto.name, dto.description);
   }
@@ -59,7 +62,10 @@ export class RolesController {
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const role = await this.rbacRepo.findRoleById(id);
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException({
+        message: 'Role not found',
+        errorCode: 'ROLE_NOT_FOUND',
+      });
     }
     const permissions = await this.rbacRepo.findPermissionsByRoleId(id);
     return { ...role, permissions };
@@ -74,12 +80,18 @@ export class RolesController {
   ) {
     const role = await this.rbacRepo.findRoleById(id);
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException({
+        message: 'Role not found',
+        errorCode: 'ROLE_NOT_FOUND',
+      });
     }
     if (dto.name) {
       const existing = await this.rbacRepo.findRoleByName(dto.name);
       if (existing && existing.id !== id) {
-        throw new ConflictException('Role name already exists');
+        throw new ConflictException({
+          message: 'Role name already exists',
+          errorCode: 'ROLE_NAME_EXISTS',
+        });
       }
     }
     await this.rbacRepo.updateRole(id, dto);
@@ -93,7 +105,10 @@ export class RolesController {
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     const role = await this.rbacRepo.findRoleById(id);
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException({
+        message: 'Role not found',
+        errorCode: 'ROLE_NOT_FOUND',
+      });
     }
     await this.rbacRepo.softDeleteRole(id);
   }
@@ -109,7 +124,10 @@ export class RolesController {
   ) {
     const role = await this.rbacRepo.findRoleById(id);
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException({
+        message: 'Role not found',
+        errorCode: 'ROLE_NOT_FOUND',
+      });
     }
     await this.rbacRepo.syncPermissionsToRole(id, dto.permission_ids);
     return this.rbacRepo.findPermissionsByRoleId(id);

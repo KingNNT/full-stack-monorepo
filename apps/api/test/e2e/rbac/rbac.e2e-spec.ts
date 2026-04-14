@@ -49,7 +49,7 @@ describe('RBAC (e2e)', () => {
         identifier: testUser.email,
         password: testUser.password,
       });
-    accessToken = loginRes.body.access_token;
+    accessToken = loginRes.body.data.access_token;
 
     const [role] = await db
       .insert(rolesTable)
@@ -103,9 +103,9 @@ describe('RBAC (e2e)', () => {
         });
 
       expect(res.status).toBe(201);
-      expect(res.body.name).toBe('editor');
-      expect(res.body.description).toBe('Content editor');
-      expect(res.body.id).toBeDefined();
+      expect(res.body.data.name).toBe('editor');
+      expect(res.body.data.description).toBe('Content editor');
+      expect(res.body.data.id).toBeDefined();
     });
 
     it('GET /rbac/roles — lists roles', async () => {
@@ -114,8 +114,8 @@ describe('RBAC (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBeGreaterThanOrEqual(1);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThanOrEqual(1);
     });
 
     it('GET /rbac/roles/:id — gets role with permissions', async () => {
@@ -127,15 +127,15 @@ describe('RBAC (e2e)', () => {
           description: 'Read-only viewer',
         });
 
-      const roleId = createRes.body.id;
+      const roleId = createRes.body.data.id;
 
       const res = await request(app.getHttpServer())
         .get(`/rbac/roles/${roleId}`)
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.name).toBe('viewer');
-      expect(Array.isArray(res.body.permissions)).toBe(true);
+      expect(res.body.data.name).toBe('viewer');
+      expect(Array.isArray(res.body.data.permissions)).toBe(true);
     });
 
     it('PATCH /rbac/roles/:id — updates role', async () => {
@@ -147,7 +147,7 @@ describe('RBAC (e2e)', () => {
           description: 'Original',
         });
 
-      const roleId = createRes.body.id;
+      const roleId = createRes.body.data.id;
 
       const res = await request(app.getHttpServer())
         .patch(`/rbac/roles/${roleId}`)
@@ -155,7 +155,7 @@ describe('RBAC (e2e)', () => {
         .send({ name: 'new-name' });
 
       expect(res.status).toBe(200);
-      expect(res.body.name).toBe('new-name');
+      expect(res.body.data.name).toBe('new-name');
     });
 
     it('DELETE /rbac/roles/:id — soft deletes', async () => {
@@ -167,7 +167,7 @@ describe('RBAC (e2e)', () => {
           description: 'To be deleted',
         });
 
-      const roleId = createRes.body.id;
+      const roleId = createRes.body.data.id;
 
       const res = await request(app.getHttpServer())
         .delete(`/rbac/roles/${roleId}`)
@@ -187,8 +187,8 @@ describe('RBAC (e2e)', () => {
         .send({ name: 'posts.create' });
 
       expect(res.status).toBe(201);
-      expect(res.body.name).toBe('posts.create');
-      expect(res.body.id).toBeDefined();
+      expect(res.body.data.name).toBe('posts.create');
+      expect(res.body.data.id).toBeDefined();
     });
 
     it('GET /rbac/permissions — lists permissions', async () => {
@@ -202,8 +202,8 @@ describe('RBAC (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBeGreaterThanOrEqual(1);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -228,7 +228,7 @@ describe('RBAC (e2e)', () => {
           password: secondUser.password,
         });
 
-      const noRoleToken = loginRes.body.access_token;
+      const noRoleToken = loginRes.body.data.access_token;
 
       const res = await request(app.getHttpServer())
         .get('/rbac/roles')
@@ -268,7 +268,7 @@ describe('RBAC (e2e)', () => {
           description: 'Regular member',
         });
 
-      const roleId = createRoleRes.body.id;
+      const roleId = createRoleRes.body.data.id;
 
       const [cred] = await db
         .select()
@@ -285,7 +285,7 @@ describe('RBAC (e2e)', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.body.message).toBe('Role assigned');
+      expect(res.body.data.message).toBe('Role assigned');
     });
 
     it('GET /rbac/model/:modelType/:modelId/roles — gets model roles', async () => {
@@ -307,7 +307,7 @@ describe('RBAC (e2e)', () => {
           description: 'Moderator role',
         });
 
-      const roleId = createRoleRes.body.id;
+      const roleId = createRoleRes.body.data.id;
 
       const [cred] = await db
         .select()
@@ -328,9 +328,9 @@ describe('RBAC (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
       expect(
-        res.body.some((r: { name: string }) => r.name === 'moderator'),
+        res.body.data.some((r: { name: string }) => r.name === 'moderator'),
       ).toBe(true);
     });
   });

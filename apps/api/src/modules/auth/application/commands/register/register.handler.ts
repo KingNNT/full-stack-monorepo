@@ -52,7 +52,10 @@ export class RegisterHandler
         { email: command.email },
         'Registration failed: duplicate email or username',
       );
-      throw new ConflictException('Email or username already in use');
+      throw new ConflictException({
+        message: 'Email or username already in use',
+        errorCode: 'EMAIL_OR_USERNAME_EXISTS',
+      });
     }
     const existingByUsername = await this.credentialsRepo.findByEmailOrUsername(
       command.username,
@@ -62,7 +65,10 @@ export class RegisterHandler
         { username: command.username },
         'Registration failed: duplicate email or username',
       );
-      throw new ConflictException('Email or username already in use');
+      throw new ConflictException({
+        message: 'Email or username already in use',
+        errorCode: 'EMAIL_OR_USERNAME_EXISTS',
+      });
     }
 
     // Hash password (Auth's concern)

@@ -40,7 +40,10 @@ export class PermissionsController {
   async create(@Body() dto: CreatePermissionRequestDto) {
     const existing = await this.rbacRepo.findPermissionByName(dto.name);
     if (existing) {
-      throw new ConflictException('Permission name already exists');
+      throw new ConflictException({
+        message: 'Permission name already exists',
+        errorCode: 'PERMISSION_NAME_EXISTS',
+      });
     }
     return this.rbacRepo.createPermission(dto.name, dto.description);
   }
@@ -58,7 +61,10 @@ export class PermissionsController {
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const permission = await this.rbacRepo.findPermissionById(id);
     if (!permission) {
-      throw new NotFoundException('Permission not found');
+      throw new NotFoundException({
+        message: 'Permission not found',
+        errorCode: 'PERMISSION_NOT_FOUND',
+      });
     }
     return permission;
   }
@@ -72,12 +78,18 @@ export class PermissionsController {
   ) {
     const permission = await this.rbacRepo.findPermissionById(id);
     if (!permission) {
-      throw new NotFoundException('Permission not found');
+      throw new NotFoundException({
+        message: 'Permission not found',
+        errorCode: 'PERMISSION_NOT_FOUND',
+      });
     }
     if (dto.name) {
       const existing = await this.rbacRepo.findPermissionByName(dto.name);
       if (existing && existing.id !== id) {
-        throw new ConflictException('Permission name already exists');
+        throw new ConflictException({
+          message: 'Permission name already exists',
+          errorCode: 'PERMISSION_NAME_EXISTS',
+        });
       }
     }
     await this.rbacRepo.updatePermission(id, dto);
@@ -91,7 +103,10 @@ export class PermissionsController {
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     const permission = await this.rbacRepo.findPermissionById(id);
     if (!permission) {
-      throw new NotFoundException('Permission not found');
+      throw new NotFoundException({
+        message: 'Permission not found',
+        errorCode: 'PERMISSION_NOT_FOUND',
+      });
     }
     await this.rbacRepo.softDeletePermission(id);
   }

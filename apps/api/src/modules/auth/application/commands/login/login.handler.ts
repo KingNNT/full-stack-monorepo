@@ -41,7 +41,10 @@ export class LoginHandler implements ICommandHandler<LoginCommand, TokenPair> {
         { identifier: command.identifier, reason: 'not_found' },
         'Login failed',
       );
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException({
+        message: 'Invalid credentials',
+        errorCode: 'INVALID_CREDENTIALS',
+      });
     }
 
     // 2. Check account status
@@ -50,7 +53,10 @@ export class LoginHandler implements ICommandHandler<LoginCommand, TokenPair> {
         { userId: credential.userId, reason: 'inactive' },
         'Login failed',
       );
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException({
+        message: 'Invalid credentials',
+        errorCode: 'INVALID_CREDENTIALS',
+      });
     }
 
     // 3. Verify password
@@ -63,7 +69,10 @@ export class LoginHandler implements ICommandHandler<LoginCommand, TokenPair> {
         { userId: credential.userId, reason: 'bad_password' },
         'Login failed',
       );
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException({
+        message: 'Invalid credentials',
+        errorCode: 'INVALID_CREDENTIALS',
+      });
     }
 
     // 4. Update last login timestamp

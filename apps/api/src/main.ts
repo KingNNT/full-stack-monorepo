@@ -11,6 +11,7 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { ClsUserInterceptor } from './shared/infrastructure/cls/cls-user.interceptor';
 import { AllExceptionsFilter } from './shared/presentation/all-exceptions.filter';
+import { TransformInterceptor } from './shared/presentation/transform.interceptor';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -36,6 +37,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(
     new ClsUserInterceptor(cls),
     new ClassSerializerInterceptor(app.get(Reflector)),
+    new TransformInterceptor(),
   );
 
   app.useGlobalPipes(

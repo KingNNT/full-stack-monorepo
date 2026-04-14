@@ -35,7 +35,10 @@ export class UpdateProfileHandler
     const userId = UserId.fromString(command.userId);
     const aggregate = await this.userRepo.findById(userId);
     if (!aggregate) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException({
+        message: 'User not found',
+        errorCode: 'USER_NOT_FOUND',
+      });
     }
 
     aggregate.updateProfile({ username: command.username });
@@ -48,7 +51,10 @@ export class UpdateProfileHandler
         /duplicate key|unique/i.test(err.message) &&
         /username/i.test(err.message)
       ) {
-        throw new ConflictException('Username already in use');
+        throw new ConflictException({
+          message: 'Username already in use',
+          errorCode: 'USERNAME_EXISTS',
+        });
       }
       throw err;
     }

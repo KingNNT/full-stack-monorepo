@@ -38,7 +38,10 @@ export class PermissionGuard implements CanActivate {
     const userId: string = request.user?.sub;
 
     if (!userId) {
-      throw new ForbiddenException();
+      throw new ForbiddenException({
+        message: 'Forbidden',
+        errorCode: 'FORBIDDEN',
+      });
     }
 
     // Super-admin bypass
@@ -61,7 +64,10 @@ export class PermissionGuard implements CanActivate {
     // Check ALL required permissions are present
     const hasAll = requiredPermissions.every((p) => permissionNames.has(p));
     if (!hasAll) {
-      throw new ForbiddenException('Insufficient permissions');
+      throw new ForbiddenException({
+        message: 'Insufficient permissions',
+        errorCode: 'INSUFFICIENT_PERMISSIONS',
+      });
     }
 
     return true;

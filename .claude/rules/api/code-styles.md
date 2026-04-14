@@ -83,6 +83,19 @@ Cross-cutting concerns live in `src/shared/` with the same layering.
 - `@ApiTags()` values must use title-case display names — capitalize each segment and keep acronyms uppercase (e.g. `Auth`, `RBAC`, `RBAC / Roles`, `RBAC / Permissions`). The tag is a human-facing section header in Swagger UI and must not mirror the lowercase route prefix.
 - Response DTOs use `@Exclude()` / `@Expose({ name: 'snake_case' })` for field transformation
 
+## Request Payload Casing
+
+| Location                      | Casing       | Example                                |
+| ----------------------------- | ------------ | -------------------------------------- |
+| URL query params (`@Query()`) | `kebab-case` | `?page-size=20&sort-by=created-at`     |
+| Request body (`@Body()`)      | `snake_case` | `{ "old_password": "...", "new_password": "..." }` |
+| Path params                   | `kebab-case` | `/users/:user-id/roles`                |
+
+- Multi-word body fields MUST be `snake_case` — matches the response envelope (`ISuccessResponse<T>` contract) so FE sees a single case convention over the wire.
+- Query params MUST be `kebab-case` — reserve `snake_case` for JSON payloads only; keep URLs URL-idiomatic.
+- Single-word fields (`email`, `password`, `name`) are unambiguous — no transform needed either way.
+- In TypeScript DTOs, declare the property with the wire name directly (e.g. `old_password!: string`) rather than relying on class-transformer aliasing on input DTOs — keeps validators readable.
+
 ## Response Format
 
 All API responses (success and error) MUST be wrapped in a consistent envelope. Controllers return bare DTOs — a global `TransformInterceptor` wraps successes, and `AllExceptionsFilter` formats errors. Never wrap manually inside a controller.
@@ -141,8 +154,8 @@ List endpoints return `items` plus a `meta` block inside `data`:
 }
 ```
 
-- Default `page=1`, `page_size=20`, cap `page_size` at 100
-- Query params: `?page=`, `?page_size=`, `?sort=field:asc|desc`, `?filter[field]=value`
+- Default `page=1`, `page_size=20` in the response (cap `page_size` at 100)
+- Query params (kebab-case): `?page=`, `?page-size=`, `?sort=field:asc|desc`, `?filter[field]=value` — note the response envelope mirrors these as `page_size`, etc.
 - Always return `items` (even empty `[]`) and `meta` — never omit the keys
 - Cursor-based pagination: include `cursor` / `next_cursor` inside `meta` instead of page fields; document which mode the endpoint uses in its `@ApiResponse()`
 

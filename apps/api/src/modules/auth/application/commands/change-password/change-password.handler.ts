@@ -44,7 +44,10 @@ export class ChangePasswordHandler
 
     const credential = await this.credentialsRepo.findByUserId(command.userId);
     if (!credential) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException({
+        message: 'User not found',
+        errorCode: 'USER_NOT_FOUND',
+      });
     }
 
     const isValid = await this.passwordHasher.verify(
@@ -56,7 +59,10 @@ export class ChangePasswordHandler
         { userId: command.userId, reason: 'bad_old_password' },
         'Change password failed',
       );
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException({
+        message: 'Current password is incorrect',
+        errorCode: 'INVALID_CURRENT_PASSWORD',
+      });
     }
 
     const newHash = await this.passwordHasher.hash(command.newPassword);

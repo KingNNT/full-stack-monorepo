@@ -19,7 +19,10 @@ export class GetProfileHandler
   async execute(query: GetProfileQuery): Promise<GetProfileResult> {
     const record = await this.readModelRepo.findById(query.userId);
     if (!record) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException({
+        message: 'User not found',
+        errorCode: 'USER_NOT_FOUND',
+      });
     }
 
     return {

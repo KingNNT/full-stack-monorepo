@@ -39,12 +39,12 @@ describe('Users profile + change-password (e2e)', () => {
     const reg = await request(app.getHttpServer())
       .post('/auth/register')
       .send(initialUser);
-    userId = reg.body.user_id as string;
+    userId = reg.body.data.user_id as string;
 
     const login = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ identifier: initialUser.email, password: initialUser.password });
-    accessToken = login.body.access_token as string;
+    accessToken = login.body.data.access_token as string;
   }, 120_000);
 
   afterAll(async () => {
@@ -60,12 +60,12 @@ describe('Users profile + change-password (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({
+      expect(res.body.data).toMatchObject({
         user_id: userId,
         email: initialUser.email,
         is_active: true,
       });
-      expect(typeof res.body.username).toBe('string');
+      expect(typeof res.body.data.username).toBe('string');
     });
 
     it('401 — no token', async () => {
@@ -107,7 +107,7 @@ describe('Users profile + change-password (e2e)', () => {
         .send({ username: newUsername });
 
       expect(res.status).toBe(200);
-      expect(res.body.username).toBe(newUsername);
+      expect(res.body.data.username).toBe(newUsername);
 
       // Allow async event handler to flush
       await new Promise((r) => setTimeout(r, 200));
