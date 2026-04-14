@@ -87,6 +87,7 @@ src/shared/
   ├── domain/            # Base classes: AggregateRoot, ValueObject, DomainEvent
   ├── application/       # UnitOfWork interface
   ├── infrastructure/    # Database (Drizzle), Logger (Pino), CLS, Event Store
+  ├── presentation/      # Health check, global exception filter
   └── events/            # Integration events
 ```
 
