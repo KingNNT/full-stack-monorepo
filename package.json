@@ -10,6 +10,7 @@
     "build": "nx run-many -t build",
     "lint": "nx run-many -t lint",
     "test": "nx run-many -t test",
+    "test:install": "bats tests/install",
     "typecheck": "nx run-many -t typecheck",
     "storybook:web": "nx storybook web",
     "prepare": "husky"
@@ -19,6 +20,7 @@
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.1.0",
     "@nx/js": "22.5.4",
+    "bats": "^1.11.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "nx": "22.5.4",

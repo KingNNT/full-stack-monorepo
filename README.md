@@ -13,6 +13,29 @@ Nx monorepo with a NestJS API backend and Next.js web frontend.
 | Linting | Biome |
 | CI | GitHub Actions |
 
+## Quick Install
+
+One-liner for a fresh macOS or Linux machine (installs Node 22 + pnpm via nvm/corepack, clones the repo, copies `.env`, runs `pnpm install`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | bash
+```
+
+Optional overrides:
+
+```bash
+INSTALL_DIR=~/code/monorepo BRANCH=main USE_HTTPS=1 \
+  curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | bash
+```
+
+Always inspect the script before piping to bash:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | less
+```
+
+Docker is optional; install it separately if you plan to use `make up` or integration tests.
+
 ## Prerequisites
 
 - Node.js 22+
