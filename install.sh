@@ -206,6 +206,8 @@ main() {
 }
 
 # Only run main when executed directly, not when sourced (e.g. by tests).
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+# When piped to bash (curl ... | bash), BASH_SOURCE is unset, so we default to
+# running main since a piped invocation is always a direct execution.
+if [[ "${BASH_SOURCE[0]:-}" == "$0" ]] || [[ -z "${BASH_SOURCE[0]:-}" ]]; then
   main "$@"
 fi
