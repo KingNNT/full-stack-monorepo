@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 #
-# Bootstrap installer for KingNNT/nestjs-nextjs-monorepo.
+# Interactive project scaffolding tool for KingNNT/full-stack-monorepo.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
+#
+# The script will prompt for:
+#   1. Project name (kebab-case) — used for directory name, package names, DB name
+#   2. Your name — for local git config
+#   3. Your email — for local git config
 #
 # Env vars:
-#   INSTALL_DIR   Target directory (default: $HOME/nestjs-nextjs-monorepo)
 #   BRANCH        Branch to check out (default: develop)
 #   USE_HTTPS     Set to 1 to force HTTPS clone (default: try SSH then HTTPS)
 
@@ -14,14 +18,16 @@ set -euo pipefail
 
 # --- Constants ---------------------------------------------------------------
 
-REPO_SSH="git@github.com:KingNNT/nestjs-nextjs-monorepo.git"
-REPO_HTTPS="https://github.com/KingNNT/nestjs-nextjs-monorepo.git"
+REPO_SSH="git@github.com:KingNNT/full-stack-monorepo.git"
+REPO_HTTPS="https://github.com/KingNNT/full-stack-monorepo.git"
 NODE_MAJOR=22
 NVM_VERSION="v0.40.1"
 
 # --- Config (env-var overridable) --------------------------------------------
 
-INSTALL_DIR="${INSTALL_DIR:-$HOME/nestjs-nextjs-monorepo}"
+# INSTALL_DIR is set dynamically in main() after prompt_project_name.
+# Override only if you need a custom path (e.g. for testing).
+INSTALL_DIR="${INSTALL_DIR:-}"
 BRANCH="${BRANCH:-develop}"
 USE_HTTPS="${USE_HTTPS:-0}"
 
@@ -31,6 +37,105 @@ log()  { echo "==> $*"; }
 warn() { echo "!!  $*" >&2; }
 die()  { echo "!!  $*" >&2; exit 1; }
 has()  { command -v "$1" >/dev/null 2>&1; }
+
+# File descriptor for interactive reads. Defaults to /dev/tty so prompts work
+# even when the script itself is piped (curl ... | bash). Tests override this
+# to /dev/stdin so they can feed input via stdin piping.
+: "${INPUT_FD:=/dev/tty}"
+
+prompt_project_name() {
+  while true; do
+    printf "==> Enter project name (kebab-case, e.g. my-saas-app): "
+    local name
+    read -r name <"$INPUT_FD"
+    if [[ "$name" =~ ^[a-z][a-z0-9-]*$ ]]; then
+      PROJECT_NAME="$name"
+      return 0
+    fi
+    warn "'$name' is not valid. Use lowercase letters, digits, and dashes. Must start with a letter."
+  done
+}
+
+prompt_git_config() {
+  while true; do
+    printf "==> Enter your name (for git config, e.g. John Doe): "
+    local name
+    read -r name <"$INPUT_FD"
+    if [ -n "$name" ]; then
+      GIT_USER_NAME="$name"
+      break
+    fi
+    warn "Name cannot be empty."
+  done
+
+  while true; do
+    printf "==> Enter your email (for git config, e.g. john@example.com): "
+    local email
+    read -r email <"$INPUT_FD"
+    if [ -n "$email" ]; then
+      GIT_USER_EMAIL="$email"
+      break
+    fi
+    warn "Email cannot be empty."
+  done
+}
+
+rename_project() {
+  log "Renaming project to $PROJECT_NAME..."
+
+  local name_us
+  name_us="${PROJECT_NAME//-/_}"
+
+  # Get list of tracked files (skip .git, node_modules, .nx, pnpm-lock.yaml, binaries)
+  local files
+  files="$(cd "$INSTALL_DIR" && git ls-files \
+    | grep -v '^pnpm-lock.yaml$' \
+    | grep -v '\.png$' \
+    | grep -v '\.jpg$' \
+    | grep -v '\.jpeg$' \
+    | grep -v '\.gif$' \
+    | grep -v '\.ico$' \
+    | grep -v '\.woff2$' \
+    | grep -v '\.woff$' \
+    | grep -v '\.ttf$' \
+    | grep -v '\.eot$' \
+    || true)"
+
+  local file
+  while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    local filepath="$INSTALL_DIR/$file"
+
+    # Order matters: more specific patterns first
+    sed -i.bak \
+      -e "s|@fullstack-monorepo-app/|@${PROJECT_NAME}/|g" \
+      -e "s|@fullstack-monorepo/|@${PROJECT_NAME}/|g" \
+      -e "s|fullstack_monorepo_dev|${name_us}_dev|g" \
+      -e "s|fullstack-monorepo|${PROJECT_NAME}|g" \
+      "$filepath"
+    rm -f "${filepath}.bak"
+  done <<< "$files"
+
+  # Also update APP_NAME in .env
+  local env_file="$INSTALL_DIR/.env"
+  if [ -f "$env_file" ]; then
+    sed -i.bak "s|^APP_NAME=.*|APP_NAME=${PROJECT_NAME}|" "$env_file"
+    rm -f "${env_file}.bak"
+  fi
+
+  log "Project renamed to $PROJECT_NAME"
+}
+
+git_init_fresh() {
+  log "Initializing fresh git repository..."
+  rm -rf "$INSTALL_DIR/.git"
+  git init "$INSTALL_DIR"
+  git -C "$INSTALL_DIR" config user.name "$GIT_USER_NAME"
+  git -C "$INSTALL_DIR" config user.email "$GIT_USER_EMAIL"
+  git -C "$INSTALL_DIR" add -A
+  git -C "$INSTALL_DIR" commit -m "feat: initialize $PROJECT_NAME from full-stack-monorepo template"
+  log "Git repository initialized with clean history"
+}
 
 detect_os() {
   case "$(uname -s)" in
@@ -153,8 +258,16 @@ setup_env_file() {
   fi
 
   cp "$src" "$dst"
-  log "Created $dst from .env.example"
-  warn "Review $dst and set JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, AUTH_SECRET before first run."
+
+  # Auto-generate secrets
+  local secret
+  for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
+    secret="$(openssl rand -base64 48 | tr -d '\n')"
+    sed -i.bak "s|^${var}=.*|${var}=${secret}|" "$dst"
+    rm -f "${dst}.bak"
+  done
+
+  log "Created $dst with auto-generated secrets"
 }
 
 install_deps() {
@@ -166,12 +279,9 @@ install_deps() {
 print_next_steps() {
   cat <<EOF
 
-==> Done! Next steps:
+==> Done! Your project '$PROJECT_NAME' is ready.
 
   cd $INSTALL_DIR
-
-  # Review secrets in .env (JWT_*, AUTH_SECRET).
-  \$EDITOR .env
 
   # Start the full stack with Docker (recommended):
   make up
@@ -184,23 +294,49 @@ print_next_steps() {
   App:  http://localhost:3000
   API:  http://localhost:8000
 
+  Git config set locally:
+    user.name:  $GIT_USER_NAME
+    user.email: $GIT_USER_EMAIL
+
+  To push to your own remote:
+    git remote set-url origin <your-repo-url>
+    git push -u origin main
+
 EOF
 }
 
 # --- Main --------------------------------------------------------------------
 
 main() {
-  log "nestjs-nextjs-monorepo installer"
+  log "full-stack-monorepo project scaffolder"
   detect_os
   log "OS: $OS"
-  log "Install dir: $INSTALL_DIR"
-  log "Branch:      $BRANCH"
   ensure_git
   ensure_node
   ensure_pnpm
   check_docker
+
+  # Interactive prompts
+  prompt_project_name
+  prompt_git_config
+
+  # Set install directory to ./<project-name> in current working directory
+  INSTALL_DIR="$(pwd)/${PROJECT_NAME}"
+
+  # Validate target directory
+  if [ -e "$INSTALL_DIR" ]; then
+    die "Target directory already exists: $INSTALL_DIR
+Remove it or choose a different project name, then re-run."
+  fi
+
   clone_repo
+  rename_project
   setup_env_file
+
+  # Remove scaffolding artifacts — not part of the user's project
+  rm -f "$INSTALL_DIR/install.sh"
+
+  git_init_fresh
   install_deps
   print_next_steps
 }

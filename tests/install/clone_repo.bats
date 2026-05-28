@@ -33,7 +33,7 @@ teardown() {
   # Verify git was called with the HTTPS URL and not the SSH URL.
   local calls
   calls="$(cat "$STUB_DIR/git.calls")"
-  [[ "$calls" == *"https://github.com/KingNNT/nestjs-nextjs-monorepo.git"* ]]
+  [[ "$calls" == *"https://github.com/KingNNT/full-stack-monorepo.git"* ]]
   [[ "$calls" != *"git@github.com"* ]]
 }
 
@@ -60,8 +60,8 @@ exit 0
   [ "$(call_count git)" -eq 2 ]
   local calls
   calls="$(cat "$STUB_DIR/git.calls")"
-  [[ "$calls" == *"git@github.com:KingNNT/nestjs-nextjs-monorepo.git"* ]]
-  [[ "$calls" == *"https://github.com/KingNNT/nestjs-nextjs-monorepo.git"* ]]
+  [[ "$calls" == *"git@github.com:KingNNT/full-stack-monorepo.git"* ]]
+  [[ "$calls" == *"https://github.com/KingNNT/full-stack-monorepo.git"* ]]
 }
 
 @test "clone_repo: propagates failure when both SSH and HTTPS fail" {
