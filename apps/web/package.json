@@ -2,13 +2,6 @@
 	"name": "@fullstack-monorepo-app/web",
 	"version": "0.1.0",
 	"private": true,
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@parcel/watcher",
-			"@swc/core",
-			"sharp"
-		]
-	},
 	"nx": {
 		"tags": [
 			"scope:web",

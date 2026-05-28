@@ -2,17 +2,6 @@
   "name": "@fullstack-monorepo-app/api",
   "version": "0.0.1",
   "private": true,
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@nestjs/core",
-      "bcrypt",
-      "cpu-features",
-      "esbuild",
-      "protobufjs",
-      "ssh2",
-      "unrs-resolver"
-    ]
-  },
   "nx": {
     "tags": [
       "scope:api",
