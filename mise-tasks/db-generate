@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Generate migration files"
+pnpm nx run @fullstack-monorepo-app/api:db-generate
