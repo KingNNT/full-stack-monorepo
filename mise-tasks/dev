@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Start all apps in dev mode"
+pnpm nx run-many -t dev
