@@ -1,0 +1,6 @@
+[tools]
+node = "lts"
+pnpm = "11"
+
+[env]
+_.file = ".env"
