@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#MISE description="Tear down dev infrastructure"
+set -euo pipefail
+
+KIND_CLUSTER="fullstack-monorepo-dev"
+
+echo "==> Stopping kind cluster..."
+kind delete cluster --name "$KIND_CLUSTER" 2>/dev/null || true
+
+echo "==> Stopping LocalStack..."
+docker stop localstack 2>/dev/null && docker rm localstack 2>/dev/null || true
+
+docker compose down
+
+echo "==> Dev infrastructure stopped."

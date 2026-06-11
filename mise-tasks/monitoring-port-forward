@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Port-forward Grafana to localhost:3001"
+set -euo pipefail
+
+echo "Grafana available at http://localhost:3001 (admin/admin)"
+kubectl port-forward svc/prometheus-grafana 3001:80 -n monitoring
