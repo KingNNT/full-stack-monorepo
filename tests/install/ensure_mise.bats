@@ -22,6 +22,10 @@ teardown() {
 }
 
 @test "ensure_mise: installs mise when not found" {
+  # Use a temp HOME so the simulated install doesn't clobber the real mise binary.
+  FAKE_HOME="$(mktemp -d "${BATS_TMPDIR:-/tmp}/mise-test-home.XXXXXX")"
+  export HOME="$FAKE_HOME"
+
   # Stub curl to simulate mise install script — writes a mise shim to $HOME/.local/bin.
   # Use absolute paths for coreutils because PATH is isolated to $STUB_DIR.
   stub curl "/bin/mkdir -p \$HOME/.local/bin; /bin/echo '#!/bin/bash' > \$HOME/.local/bin/mise; /bin/echo 'echo 2026.6.2' >> \$HOME/.local/bin/mise; /bin/chmod +x \$HOME/.local/bin/mise"
@@ -35,4 +39,7 @@ teardown() {
     ensure_mise
   "
   [ "$status" -eq 0 ]
+
+  # Cleanup temp HOME
+  rm -rf "$FAKE_HOME"
 }
