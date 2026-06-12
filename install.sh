@@ -20,8 +20,7 @@ set -euo pipefail
 
 REPO_SSH="git@github.com:KingNNT/full-stack-monorepo.git"
 REPO_HTTPS="https://github.com/KingNNT/full-stack-monorepo.git"
-NODE_MAJOR=22
-NVM_VERSION="v0.40.1"
+
 
 # --- Config (env-var overridable) --------------------------------------------
 
@@ -156,52 +155,17 @@ ensure_git() {
   log "git: $(git --version)"
 }
 
-ensure_node() {
-  log "Checking Node.js (>= ${NODE_MAJOR})..."
-
-  # Load nvm if it's already installed but not yet on PATH for this shell.
-  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-  # shellcheck disable=SC1091
-  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-
-  if has node; then
-    local current_major
-    current_major="$(node -p 'process.versions.node.split(".")[0]')"
-    if [ "$current_major" -ge "$NODE_MAJOR" ]; then
-      log "Node $(node --version) OK"
-      return 0
-    fi
-    warn "Node $(node --version) is older than ${NODE_MAJOR}; installing via nvm"
-  fi
-
-  if ! has nvm && [ ! -s "$NVM_DIR/nvm.sh" ]; then
-    log "Installing nvm ${NVM_VERSION}..."
-    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash
+ensure_mise() {
+  log "Checking mise..."
+  if ! has mise; then
+    log "Installing mise..."
+    curl -fsSL https://mise.run | sh
     # shellcheck disable=SC1091
-    . "$NVM_DIR/nvm.sh"
+    . "$HOME/.local/bin/mise" activate bash 2>/dev/null || true
+    # Also add to PATH for current shell in case activate didn't fully work
+    export PATH="$HOME/.local/bin:$PATH"
   fi
-
-  log "Installing Node ${NODE_MAJOR} via nvm..."
-  nvm install "${NODE_MAJOR}"
-  nvm use "${NODE_MAJOR}"
-  log "Node $(node --version) installed"
-}
-
-ensure_pnpm() {
-  log "Checking pnpm..."
-  if has pnpm; then
-    log "pnpm $(pnpm --version) OK"
-    return 0
-  fi
-
-  if ! has corepack; then
-    die "corepack not found. This should ship with Node >= 16; please reinstall Node."
-  fi
-
-  log "Enabling pnpm via corepack..."
-  corepack enable
-  corepack prepare pnpm@latest --activate
-  log "pnpm $(pnpm --version) installed"
+  log "mise $(mise --version)"
 }
 
 check_docker() {
@@ -270,6 +234,12 @@ setup_env_file() {
   log "Created $dst with auto-generated secrets"
 }
 
+mise_install_tools() {
+  log "Installing tools via mise..."
+  (cd "$INSTALL_DIR" && mise install)
+  log "Node $(node --version) + pnpm $(pnpm --version) installed"
+}
+
 install_deps() {
   log "Installing dependencies with pnpm..."
   (cd "$INSTALL_DIR" && pnpm install)
@@ -289,7 +259,7 @@ print_next_steps() {
   make db-seed
 
   # Or run locally without Docker:
-  pnpm dev
+  mise run dev
 
   App:  http://localhost:3000
   API:  http://localhost:8000
@@ -312,8 +282,7 @@ main() {
   detect_os
   log "OS: $OS"
   ensure_git
-  ensure_node
-  ensure_pnpm
+  ensure_mise
   check_docker
 
   # Interactive prompts
@@ -332,6 +301,7 @@ Remove it or choose a different project name, then re-run."
   clone_repo
   rename_project
   setup_env_file
+  mise_install_tools
 
   # Remove scaffolding artifacts — not part of the user's project
   rm -f "$INSTALL_DIR/install.sh"

@@ -29,7 +29,10 @@ describe("handleApiError", () => {
 
 	it("handles AuthException with correct status code and error code", () => {
 		const error = new MissingCredentialsException("Missing fields");
-		const response = handleApiError(error) as { status: number; body: Record<string, unknown> };
+		const response = handleApiError(error) as unknown as {
+			status: number;
+			body: Record<string, unknown>;
+		};
 
 		expect(response.status).toBe(400);
 		expect(response.body).toMatchObject({
@@ -42,7 +45,10 @@ describe("handleApiError", () => {
 
 	it("handles InvalidEmailException with 400 status", () => {
 		const error = new InvalidEmailException("Bad email");
-		const response = handleApiError(error) as { status: number; body: Record<string, unknown> };
+		const response = handleApiError(error) as unknown as {
+			status: number;
+			body: Record<string, unknown>;
+		};
 
 		expect(response.status).toBe(400);
 		expect(response.body.error).toBe(AUTH_SERVICE_ERROR_CODES.INVALID_EMAIL);
@@ -50,7 +56,7 @@ describe("handleApiError", () => {
 
 	it("includes errorTraceId when includeTraceId is true", () => {
 		const error = new MissingCredentialsException();
-		const response = handleApiError(error, true) as {
+		const response = handleApiError(error, true) as unknown as {
 			status: number;
 			body: Record<string, unknown>;
 		};
@@ -61,7 +67,7 @@ describe("handleApiError", () => {
 
 	it("omits errorTraceId when includeTraceId is false", () => {
 		const error = new MissingCredentialsException();
-		const response = handleApiError(error, false) as {
+		const response = handleApiError(error, false) as unknown as {
 			status: number;
 			body: Record<string, unknown>;
 		};
@@ -71,7 +77,10 @@ describe("handleApiError", () => {
 
 	it("handles generic Error with 500 status", () => {
 		const error = new Error("Something broke");
-		const response = handleApiError(error) as { status: number; body: Record<string, unknown> };
+		const response = handleApiError(error) as unknown as {
+			status: number;
+			body: Record<string, unknown>;
+		};
 
 		expect(response.status).toBe(500);
 		expect(response.body).toMatchObject({
@@ -83,7 +92,7 @@ describe("handleApiError", () => {
 	});
 
 	it("handles unknown error types with 500 status", () => {
-		const response = handleApiError("string error") as {
+		const response = handleApiError("string error") as unknown as {
 			status: number;
 			body: Record<string, unknown>;
 		};

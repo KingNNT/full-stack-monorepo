@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Stop all containers"
+docker compose down

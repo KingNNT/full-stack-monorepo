@@ -51,6 +51,10 @@ Thumbs.db
 .env.production
 .envrc.local
 
+# mise local
+.mise.local.toml
+.mise.local.*
+
 # TypeScript
 *.tsbuildinfo
 

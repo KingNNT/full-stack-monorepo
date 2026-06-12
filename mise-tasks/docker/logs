@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Tail all container logs"
+docker compose logs -f

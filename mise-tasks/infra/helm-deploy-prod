@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Deploy all services to prod"
+set -euo pipefail
+bash infra/scripts/deploy.sh prod all

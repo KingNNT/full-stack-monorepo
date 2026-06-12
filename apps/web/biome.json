@@ -2,7 +2,7 @@
 	"root": false,
 	"extends": ["../../biome.json"],
 	"files": {
-		"includes": ["**", "!.next"]
+		"includes": ["**", "!.next", "!playwright-report", "!test-results"]
 	},
 	"formatter": {
 		"enabled": true,

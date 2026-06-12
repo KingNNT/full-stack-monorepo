@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Run terraform plan for dev env"
+set -euo pipefail
+bash infra/scripts/tf-plan.sh dev

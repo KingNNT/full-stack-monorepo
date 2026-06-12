@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Remove monitoring stack"
+set -euo pipefail
+
+echo "==> Removing monitoring stack..."
+helm uninstall prometheus loki promtail tempo otel-collector -n monitoring 2>/dev/null || true
+kubectl delete namespace monitoring 2>/dev/null || true
+echo "==> Monitoring stack removed."

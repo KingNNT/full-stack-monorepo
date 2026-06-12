@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Run API integration tests"
+pnpm --filter @fullstack-monorepo-app/api test:integration

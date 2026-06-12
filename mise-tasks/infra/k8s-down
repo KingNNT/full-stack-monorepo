@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#MISE description="Stop full K8s dev environment"
+set -euo pipefail
+
+KIND_CLUSTER="fullstack-monorepo-dev"
+
+echo ""
+echo -e "\033[1;35m  ━━ Stopping K8s Dev Environment ━━\033[0m"
+echo ""
+
+echo "  Uninstalling Helm releases..."
+helm uninstall prometheus loki promtail tempo otel-collector -n monitoring 2>/dev/null || true
+helm uninstall api web postgres -n dev 2>/dev/null || true
+
+echo "  Deleting kind cluster..."
+kind delete cluster --name "$KIND_CLUSTER" 2>/dev/null || true
+
+echo "  Stopping LocalStack..."
+localstack stop 2>/dev/null || true
+
+echo ""
+echo -e "\033[1;32m  ✓ K8s dev environment stopped.\033[0m"
+echo ""

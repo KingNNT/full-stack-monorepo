@@ -3,7 +3,7 @@ import { createUserAggregate } from '../../../../../../test/helpers/factories/us
 import { createMockPinoLogger } from '../../../../../../test/helpers/mocks/logger.mock';
 import { createMockUnitOfWork } from '../../../../../../test/helpers/mocks/unit-of-work.mock';
 import type { IUnitOfWork } from '../../../../../shared/application/unit-of-work.interface';
-import type { UserAggregate } from '../../../domain/aggregates/user.aggregate';
+
 import { UserProfileUpdatedEvent } from '../../../domain/events/user-profile-updated.event';
 import type { IUserRepository } from '../../../domain/repositories/user.repository.interface';
 import { UpdateProfileCommand } from './update-profile.command';
@@ -45,7 +45,7 @@ describe('UpdateProfileHandler', () => {
     mockUserRepo.findById.mockResolvedValue(aggregate);
 
     let snapshot: ReadonlyArray<unknown> = [];
-    mockUow.commit.mockImplementation(async (agg: UserAggregate) => {
+    mockUow.commit.mockImplementation(async (agg) => {
       snapshot = agg.getUncommittedEvents();
     });
 

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Run terraform apply for dev env"
+set -euo pipefail
+cd infra/terraform/envs/dev && terraform apply -auto-approve -input=false

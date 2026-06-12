@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Run API and Web e2e tests"
+pnpm --filter @fullstack-monorepo-app/api test:e2e
+pnpm --filter @fullstack-monorepo-app/web test:e2e

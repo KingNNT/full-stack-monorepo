@@ -47,10 +47,11 @@ const FormDemo = () => {
 	);
 };
 
+// Use render-only pattern without component inference to avoid
+// requiring all Form props as args when using a custom render function.
 const meta = {
 	title: "UI/Form",
-	component: Form,
-} satisfies Meta<typeof Form>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Open Drizzle Studio"
+pnpm nx run @fullstack-monorepo-app/api:db-studio

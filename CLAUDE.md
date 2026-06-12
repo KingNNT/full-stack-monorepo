@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack Monorepo — Nx monorepo with a NestJS API backend and Next.js web frontend. Package manager is **pnpm** (v10.11+). Node 22+.
+Full-stack Monorepo — Nx monorepo with a NestJS API backend and Next.js web frontend. Tool versions managed by **mise** (`.mise.toml`).
 
 **IMPORTANT: This project uses pnpm exclusively. Never use npm, npx, or yarn. Use `pnpm` / `pnpm exec` / `pnpm dlx` instead.**
+
+**Tool setup:** Run `mise install` to install Node (LTS) and pnpm. mise also manages env vars and tasks. See `mise tasks ls` for all available commands.
 
 ## Common Commands
 
@@ -46,24 +48,28 @@ pnpm test                  # Unit + integration (Vitest)
 pnpm test:e2e              # Playwright
 
 # Database (Drizzle ORM)
-make db-generate           # Generate migrations from schema changes
-make db-migrate            # Run migrations
-make db-studio             # Open Drizzle Studio
-make db-seed               # Seed RBAC data (roles, permissions)
+mise run db:generate       # Generate migrations from schema changes
+mise run db:migrate        # Run migrations
+mise run db:studio         # Open Drizzle Studio
+mise run db:seed           # Seed RBAC data (roles, permissions)
 
 # Docker
-make up                    # Build and start all services (API + Web + PostgreSQL)
-make down                  # Stop all
-make up-api / make up-web  # Start individual service + postgres
-make logs                  # Tail all logs
-make logs-api / make logs-web  # Tail individual service logs
-make clean                 # Stop containers, remove volumes and images
+mise run docker:up         # Build and start all services (API + Web + PostgreSQL)
+mise run docker:down       # Stop all
+mise run docker:up-api     # Start api + postgres
+mise run docker:up-web     # Start web + postgres
+mise run docker:logs       # Tail all logs
+mise run docker:logs-api   # Tail api logs
+mise run docker:logs-web   # Tail web logs
+mise run docker:clean      # Stop containers, remove volumes and images
 
 # Monitoring
-make monitoring-up ENV=dev    # Deploy monitoring stack to dev
-make monitoring-down          # Remove monitoring stack
-make monitoring-port-forward  # Port-forward Grafana to localhost:3001
+mise run infra:monitoring-up              # Deploy monitoring stack to dev
+mise run infra:monitoring-down            # Remove monitoring stack
+mise run infra:monitoring-port-forward    # Port-forward Grafana to localhost:3001
 ```
+
+Short aliases are available for common commands: `mise run dev`, `mise run up`, `mise run down`, `mise run lint`, `mise run test`, `mise run typecheck`, `mise run db-migrate`, `mise run db-seed`. Run `mise tasks ls` to see all tasks.
 
 ## Architecture
 
@@ -147,6 +153,8 @@ Custom metrics available via `MetricsService` injectable.
 - **Testing**: API uses Jest + TestContainers; Web uses Vitest (unit/integration) + Playwright (e2e).
 
 ## Environment Variables
+
+Environment is managed by mise. `.mise.toml` loads `.env` for shared config. Create `.mise.local.toml` with `_.file = ".env.local"` for personal overrides (gitignored).
 
 Each app has a `.env.example` file. Key variables:
 - API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `PORT`

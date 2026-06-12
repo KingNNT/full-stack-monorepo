@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Start LocalStack + kind cluster"
+set -euo pipefail
+bash infra/scripts/localstack-init.sh

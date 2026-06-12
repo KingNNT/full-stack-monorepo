@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Build & start api + postgres"
+docker compose up --build -d postgres api
