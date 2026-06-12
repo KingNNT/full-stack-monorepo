@@ -6,7 +6,7 @@ Nx monorepo with a NestJS API backend and Next.js web frontend.
 
 | Layer | Technology |
 |-------|-----------|
-| Monorepo | Nx 22, pnpm 10 |
+| Monorepo | Nx 22, pnpm 11, mise |
 | Backend | NestJS 11, Drizzle ORM, PostgreSQL 16, Passport JWT, Pino |
 | Frontend | Next.js 16, React 19, TailwindCSS v4, NextAuth v5, next-intl |
 | Testing | Jest + TestContainers (API), Vitest + Playwright (Web) |
@@ -15,7 +15,7 @@ Nx monorepo with a NestJS API backend and Next.js web frontend.
 
 ## Quick Install
 
-One-liner for a fresh macOS or Linux machine (installs Node 22 + pnpm via nvm/corepack, clones the repo, copies `.env`, runs `pnpm install`):
+One-liner for a fresh macOS or Linux machine (installs mise, then Node LTS + pnpm via `mise install`, clones the repo, copies `.env`, runs `pnpm install`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | bash
@@ -34,39 +34,38 @@ Always inspect the script before piping to bash:
 curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | less
 ```
 
-Docker is optional; install it separately if you plan to use `make up` or integration tests.
+Docker is optional; install it separately if you plan to use `mise run docker:up` or integration tests.
 
 ## Prerequisites
 
-- Node.js 22+
-- pnpm 10.11+
+- [mise](https://mise.jdx.dev) — runs `mise install` to get Node LTS + pnpm
 - Docker (for PostgreSQL and containerized builds)
 
 ## Getting Started
 
 ```bash
-# Install dependencies
+# Install tools + dependencies
+mise install
 pnpm install
 
-# Copy env files
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
+# Copy env file
+cp .env.example .env
 
 # Start PostgreSQL
-make up-api    # starts postgres + api
+mise run docker:up-api    # starts postgres + api
 # or just postgres:
 docker compose up -d postgres
 
 # Run database migrations
-make db-migrate
+mise run db:migrate
 
 # Seed RBAC data
-make db-seed
+mise run db:seed
 
 # Start development
-pnpm dev       # both apps
-pnpm dev:api   # API only (port 8000)
-pnpm dev:web   # Web only (port 3000)
+mise run dev       # both apps
+pnpm dev:api       # API only (port 8000)
+pnpm dev:web       # Web only (port 3000)
 
 # Storybook
 pnpm storybook:web   # Web component playground
@@ -114,15 +113,15 @@ packages/           Shared libraries (reserved)
 
 ```bash
 # Development
-pnpm dev              # Run both apps
-pnpm dev:api          # API only
-pnpm dev:web          # Web only
+mise run dev              # Run both apps
+pnpm dev:api              # API only
+pnpm dev:web              # Web only
 
 # Quality
-pnpm build            # Build all
-pnpm lint             # Biome lint
-pnpm typecheck        # TypeScript check
-pnpm test             # Run all tests
+pnpm build                # Build all
+mise run lint             # Biome lint
+mise run typecheck        # TypeScript check
+mise run test             # Run unit tests
 
 # Single app
 pnpm nx run api:test
@@ -133,16 +132,19 @@ pnpm nx run api:lint
 pnpm storybook:web        # Start Storybook dev server (Web)
 
 # Database
-make db-generate      # Generate migrations from schema
-make db-migrate       # Run migrations
-make db-studio        # Open Drizzle Studio
-make db-seed          # Seed RBAC data
+mise run db:generate      # Generate migrations from schema
+mise run db:migrate       # Run migrations
+mise run db:studio        # Open Drizzle Studio
+mise run db:seed          # Seed RBAC data
 
 # Docker
-make up               # Build and start all services
-make down             # Stop all
-make logs             # Tail logs
-make clean            # Remove volumes and images
+mise run docker:up        # Build and start all services
+mise run docker:down      # Stop all
+mise run docker:logs      # Tail logs
+mise run docker:clean     # Remove volumes and images
+
+# Full task list
+mise tasks ls             # Show all available tasks
 ```
 
 ## Architecture
@@ -193,6 +195,8 @@ modules/{domain}/
 | `AUTH_SECRET` | NextAuth secret | - |
 | `NEXT_PUBLIC_API_BASE_URL` | API base URL | `http://localhost:8000` |
 | `NEXTAUTH_URL` | NextAuth URL | `http://localhost:3000` |
+
+**Setup:** `.mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `.mise.local.toml` (both gitignored).
 
 ## Tooling
 
