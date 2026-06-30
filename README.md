@@ -34,7 +34,7 @@ Always inspect the script before piping to bash:
 curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | less
 ```
 
-Docker is optional; install it separately if you plan to use `mise run docker:up` or integration tests.
+Docker is optional; install it separately if you plan to use `mise run local:docker-up` or integration tests.
 
 ## Prerequisites
 
@@ -52,15 +52,15 @@ pnpm install
 cp .env.example .env
 
 # Start PostgreSQL
-mise run docker:up-api    # starts postgres + api
+mise run local:docker-up-api    # starts postgres + api
 # or just postgres:
 docker compose up -d postgres
 
 # Run database migrations
-mise run db:migrate
+mise run local:db-migrate
 
 # Seed RBAC data
-mise run db:seed
+mise run local:db-seed
 
 # Start development
 mise run dev       # both apps
@@ -132,16 +132,16 @@ pnpm nx run api:lint
 pnpm storybook:web        # Start Storybook dev server (Web)
 
 # Database
-mise run db:generate      # Generate migrations from schema
-mise run db:migrate       # Run migrations
-mise run db:studio        # Open Drizzle Studio
-mise run db:seed          # Seed RBAC data
+mise run local:db-generate      # Generate migrations from schema
+mise run local:db-migrate       # Run migrations
+mise run local:db-studio        # Open Drizzle Studio
+mise run local:db-seed          # Seed RBAC data
 
 # Docker
-mise run docker:up        # Build and start all services
-mise run docker:down      # Stop all
-mise run docker:logs      # Tail logs
-mise run docker:clean     # Remove volumes and images
+mise run local:docker-up        # Build and start all services
+mise run local:docker-down      # Stop all
+mise run local:docker-logs      # Tail logs
+mise run local:docker-clean     # Remove volumes and images
 
 # Full task list
 mise tasks ls             # Show all available tasks

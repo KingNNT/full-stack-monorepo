@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Tail web container logs"
-docker compose logs -f web

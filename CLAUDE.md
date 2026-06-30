@@ -48,28 +48,27 @@ pnpm test                  # Unit + integration (Vitest)
 pnpm test:e2e              # Playwright
 
 # Database (Drizzle ORM)
-mise run db:generate       # Generate migrations from schema changes
-mise run db:migrate        # Run migrations
-mise run db:studio         # Open Drizzle Studio
-mise run db:seed           # Seed RBAC data (roles, permissions)
+mise run local:db-generate       # Generate migrations from schema changes
+mise run local:db-migrate        # Run migrations
+mise run local:db-studio         # Open Drizzle Studio
+mise run local:db-seed           # Seed RBAC data (roles, permissions)
 
 # Docker
-mise run docker:up         # Build and start all services (API + Web + PostgreSQL)
-mise run docker:down       # Stop all
-mise run docker:up-api     # Start api + postgres
-mise run docker:up-web     # Start web + postgres
-mise run docker:logs       # Tail all logs
-mise run docker:logs-api   # Tail api logs
-mise run docker:logs-web   # Tail web logs
-mise run docker:clean      # Stop containers, remove volumes and images
+mise run local:docker-up         # Build and start all services (API + Web + PostgreSQL)
+mise run local:docker-down       # Stop all
+mise run local:docker-up-api     # Start api + postgres
+mise run local:docker-logs       # Tail all logs
+mise run local:docker-clean      # Stop containers, remove volumes and images
 
-# Monitoring
-mise run infra:monitoring-up              # Deploy monitoring stack to dev
-mise run infra:monitoring-down            # Remove monitoring stack
-mise run infra:monitoring-port-forward    # Port-forward Grafana to localhost:3001
+# Monitoring (dev kind cluster)
+mise run dev:monitoring-up              # Deploy monitoring stack to dev
+mise run dev:monitoring-down            # Remove monitoring stack
+mise run dev:monitoring-port-forward    # Port-forward Grafana to localhost:3001
 ```
 
-Short aliases are available for common commands: `mise run dev`, `mise run up`, `mise run down`, `mise run lint`, `mise run test`, `mise run typecheck`, `mise run db-migrate`, `mise run db-seed`. Run `mise tasks ls` to see all tasks.
+Tasks are namespaced by **environment**: `local:*` (dev machine — apps, db, docker), `dev:*` (kind/LocalStack cluster — `infra-up`/`infra-down` for just the cluster, `k8s-up`/`k8s-down` for the full env, plus terraform, deploy, monitoring), `staging:*` and `prod:*` (helm deploys). Task files live in `.mise-tasks/<env>/`.
+
+Short aliases for the daily commands: `mise run dev`, `mise run lint`, `mise run test`, `mise run typecheck`. Run `mise tasks ls` to see all tasks.
 
 ## Architecture
 

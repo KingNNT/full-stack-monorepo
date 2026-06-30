@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-#MISE description="Deploy monitoring stack (usage: mise run monitoring-up --env=dev)"
+#MISE description="Deploy monitoring stack (usage: ENV=dev mise run dev:monitoring-up)"
 set -euo pipefail
 bash infra/helm/monitoring/install.sh "${ENV:-dev}"

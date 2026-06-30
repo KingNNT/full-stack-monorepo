@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Run all test layers (unit, integration, e2e)"
-mise run app:test-unit
-mise run app:test-integration
-mise run app:test-e2e
+mise run local:test
+mise run local:test-integration
+mise run local:test-e2e
