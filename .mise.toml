@@ -5,35 +5,19 @@ pnpm = "11"
 [env]
 _.file = ".env"
 
-# Short aliases for the most common commands
+# Short aliases for the most common daily commands
 [tasks.dev]
 description = "Start all apps in dev mode"
-depends = ["app:dev"]
-
-[tasks.up]
-description = "Build & start all containers"
-depends = ["docker:up"]
-
-[tasks.down]
-description = "Stop all containers"
-depends = ["docker:down"]
+depends = ["local:dev"]
 
 [tasks.lint]
 description = "Lint all apps"
-depends = ["app:lint"]
+depends = ["local:lint"]
 
 [tasks.test]
 description = "Run unit tests for all apps"
-depends = ["app:test-unit"]
+depends = ["local:test"]
 
 [tasks.typecheck]
 description = "Typecheck all apps"
-depends = ["app:typecheck"]
-
-[tasks.db-migrate]
-description = "Run database migrations"
-depends = ["db:migrate"]
-
-[tasks.db-seed]
-description = "Seed the database"
-depends = ["db:seed"]
+depends = ["local:typecheck"]
