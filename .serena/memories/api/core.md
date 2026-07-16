@@ -1,0 +1,4 @@
+- `apps/api` is the NestJS 11 backend (port 8000).
+- DDD + CQRS + event sourcing layout: `src/modules/<domain>/{application,domain,infrastructure,presentation}`; shared infrastructure/domain/application/presentation/events under `src/shared`.
+- Domain modules currently include auth, user, and RBAC.
+- Database schema: `src/shared/infrastructure/database/schema`; migrations: `apps/api/drizzle/migrations`.

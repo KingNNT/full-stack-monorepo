@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack Monorepo — Nx monorepo with a NestJS API backend and Next.js web frontend. Tool versions managed by **mise** (`.mise.toml`).
+Full-stack Monorepo — Nx monorepo with a NestJS API backend and Next.js web frontend. Tool versions managed by **mise** (`mise.toml`).
 
 **IMPORTANT: This project uses pnpm exclusively. Never use npm, npx, or yarn. Use `pnpm` / `pnpm exec` / `pnpm dlx` instead.**
 
@@ -66,7 +66,7 @@ mise run dev:monitoring-down            # Remove monitoring stack
 mise run dev:monitoring-port-forward    # Port-forward Grafana to localhost:3001
 ```
 
-Tasks are namespaced by **environment**: `local:*` (dev machine — apps, db, docker), `dev:*` (kind/LocalStack cluster — `infra-up`/`infra-down` for just the cluster, `k8s-up`/`k8s-down` for the full env, plus terraform, deploy, monitoring), `staging:*` and `prod:*` (helm deploys). Task files live in `.mise-tasks/<env>/`.
+Tasks are namespaced by **environment**: `local:*` (dev machine — apps, db, docker), `dev:*` (kind/LocalStack cluster — `infra-up`/`infra-down` for just the cluster, `k8s-up`/`k8s-down` for the full env, plus terraform, deploy, monitoring), `staging:*` and `prod:*` (helm deploys). Task files live in `mise/tasks/<env>/`.
 
 Short aliases for the daily commands: `mise run dev`, `mise run lint`, `mise run test`, `mise run typecheck`. Run `mise tasks ls` to see all tasks.
 
@@ -153,7 +153,7 @@ Custom metrics available via `MetricsService` injectable.
 
 ## Environment Variables
 
-Environment is managed by mise. `.mise.toml` loads `.env` for shared config. Create `.mise.local.toml` with `_.file = ".env.local"` for personal overrides (gitignored).
+Environment is managed by mise. `mise.toml` loads `.env` for shared config. Create `mise.local.toml` with `_.file = ".env.local"` for personal overrides (gitignored).
 
 Each app has a `.env.example` file. Key variables:
 - API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `PORT`

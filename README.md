@@ -197,7 +197,7 @@ modules/{domain}/
 | `NEXT_PUBLIC_API_BASE_URL` | API base URL | `http://localhost:8000` |
 | `NEXTAUTH_URL` | NextAuth URL | `http://localhost:3000` |
 
-**Setup:** `.mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `.mise.local.toml` (both gitignored).
+**Setup:** `mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `mise.local.toml` (both gitignored).
 
 ## Tooling
 

@@ -1,0 +1,5 @@
+- Nx monorepo at project root; primary apps: `apps/api` (NestJS backend) and `apps/web` (Next.js frontend).
+- Shared/reserved workspace: `packages/`.
+- Root package manager invariant: pnpm only; tool versions via mise.
+- Read `mem:tech_stack` for tool/version details; `mem:conventions` for repo conventions; `mem:suggested_commands` for common commands; `mem:task_completion` before declaring coding work complete.
+- Module-specific maps: `mem:api/core` and `mem:web/core`.

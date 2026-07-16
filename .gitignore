@@ -52,8 +52,8 @@ Thumbs.db
 .envrc.local
 
 # mise local
-.mise.local.toml
-.mise.local.*
+mise.local.toml
+mise.local.*
 
 # TypeScript
 *.tsbuildinfo

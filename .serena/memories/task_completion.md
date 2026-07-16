@@ -1,0 +1,4 @@
+- Before completion of code changes, run the narrowest relevant validation and then the affected project checks where practical.
+- Repository-standard broad checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` (Nx run-many).
+- API tests/lint/typecheck/build can be targeted with `pnpm nx run api:<target>`; web similarly with `pnpm nx run web:<target>`.
+- For shell/script relocation changes, verify Git detects the intended rename, preserve executable mode, and execute the script's relevant help/dry-run behavior without exposing secrets.

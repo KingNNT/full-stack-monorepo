@@ -1,0 +1,7 @@
+- Use pnpm exclusively; never npm, npx, or yarn.
+- Use mise tasks for environment-scoped workflows (`local:*`, `dev:*`, `staging:*`, `prod:*`); root short aliases delegate to local tasks.
+- Mise task files live in `mise/tasks/<env>/` (executable bash scripts with `#MISE description="…"` headers).
+- Formatting is Biome. API style is single quotes/80 columns; Web style is double quotes/tabs/100 columns.
+- API follows DDD + CQRS + event sourcing under `apps/api/src/modules/<domain>` with shared cross-cutting code under `src/shared`.
+- Web uses Next.js App Router and next-intl under `apps/web/src/app/[locale]`; server components by default.
+- Git hooks use Husky, lint-staged, and conventional commit messages.

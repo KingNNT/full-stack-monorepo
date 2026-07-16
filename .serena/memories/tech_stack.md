@@ -1,0 +1,3 @@
+- Package manager: pnpm 11, configured in `mise.toml`; Node uses LTS via mise.
+- All Mise definitions live at the repo root: `mise.toml` (tools, env, short-alias tasks) and `mise/tasks/<env>/*` for environment-scoped tasks (executable bash with `#MISE description="…"` headers).
+- Personal overrides go in `mise.local.toml` (gitignored) and are not present in `mem:core`.
