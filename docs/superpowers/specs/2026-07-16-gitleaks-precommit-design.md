@@ -15,7 +15,7 @@ Update `.husky/pre-commit` on the existing Gitleaks relocation branch so it runs
 pnpm exec lint-staged && ./tools/bin/gitleaks detect --source . --redact
 ```
 
-The command uses the root-level helper introduced by the relocation change. No changes are needed to the Gitleaks script, `.lintstagedrc.json`, package scripts, or application code.
+The command uses the `tools/bin/gitleaks` helper introduced by the relocation change. No changes are needed to the Gitleaks script, `.lintstagedrc.json`, package scripts, or application code.
 
 The hook requires either a local `gitleaks` binary on PATH or Docker (the helper falls back to `docker run zricethezav/gitleaks`). Contributor-facing docs must reflect that prerequisite so contributors understand the helper is mandatory at every commit. The following documentation updates are in scope and must agree with the implemented hook:
 

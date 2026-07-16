@@ -39,7 +39,7 @@ Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/
 ## Prerequisites
 
 - [mise](https://mise.jdx.dev) — runs `mise install` to get Node LTS + pnpm
-- [gitleaks](https://github.com/gitleaks/gitleaks) — required for the pre-commit secret scan; the root helper falls back to `docker run` when no local binary is on PATH
+- [gitleaks](https://github.com/gitleaks/gitleaks) — required for the pre-commit secret scan; the helper at `tools/bin/gitleaks` falls back to `docker run` when no local binary is on PATH
 - Docker (for PostgreSQL, containerized builds, and the gitleaks helper fallback)
 
 ## Getting Started

@@ -4,7 +4,7 @@
 
 **Goal:** Make every commit run the repository-wide Gitleaks scan after the existing staged-file Biome checks.
 
-**Architecture:** Extend the existing Husky pre-commit shell hook with a short-circuit command chain. `lint-staged` runs first; only after it succeeds does the root-level `tools/bin/gitleaks` helper run. Because the commands are joined with `&&`, either command returning non-zero blocks the commit.
+**Architecture:** Extend the existing Husky pre-commit shell hook with a short-circuit command chain. `lint-staged` runs first; only after it succeeds does the `tools/bin/gitleaks` helper run. Because the commands are joined with `&&`, either command returning non-zero blocks the commit.
 
 **Tech Stack:** Husky, pnpm, lint-staged, Bash, Gitleaks
 
