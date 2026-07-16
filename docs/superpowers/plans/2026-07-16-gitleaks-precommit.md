@@ -4,7 +4,7 @@
 
 **Goal:** Make every commit run the repository-wide Gitleaks scan after the existing staged-file Biome checks.
 
-**Architecture:** Extend the existing Husky pre-commit shell hook with a short-circuit command chain. `lint-staged` runs first; only after it succeeds does the root-level `bin/gitleaks` helper run. Because the commands are joined with `&&`, either command returning non-zero blocks the commit.
+**Architecture:** Extend the existing Husky pre-commit shell hook with a short-circuit command chain. `lint-staged` runs first; only after it succeeds does the `tools/bin/gitleaks` helper run. Because the commands are joined with `&&`, either command returning non-zero blocks the commit.
 
 **Tech Stack:** Husky, pnpm, lint-staged, Bash, Gitleaks
 
@@ -21,7 +21,7 @@
 Replace the current contents of `.husky/pre-commit` with exactly:
 
 ```bash
-pnpm exec lint-staged && ./bin/gitleaks detect --source . --redact
+pnpm exec lint-staged && ./tools/bin/gitleaks detect --source . --redact
 ```
 
 This keeps the existing Biome/lint-staged check first and adds a full-repository, redacted Gitleaks scan using the relocated helper.
@@ -38,8 +38,8 @@ Expected: only the hook and implementation plan are staged.
 
 ```bash
 bash -n .husky/pre-commit
-bash -n bin/gitleaks
-test "$(git show :.husky/pre-commit)" = "pnpm exec lint-staged && ./bin/gitleaks detect --source . --redact"
+bash -n tools/bin/gitleaks
+test "$(git show :.husky/pre-commit)" = "pnpm exec lint-staged && ./tools/bin/gitleaks detect --source . --redact"
 ```
 
 Expected: all commands exit successfully, and the staged hook contains the exact approved command.
@@ -86,11 +86,11 @@ Update the Prerequisites list to add a \`gitleaks\` entry noting the Docker fall
 
 - [ ] **Step 2: Update `README.md` Tooling Git-hooks entry**
 
-Change the line "**Git hooks**: Husky pre-commit (lint-staged + Biome), commit-msg (commitlint, conventional commits)" so it describes the hook as \`lint-staged\` (Biome) followed by the repository-wide Gitleaks command (\`./bin/gitleaks detect --source . --redact\`).
+Change the line "**Git hooks**: Husky pre-commit (lint-staged + Biome), commit-msg (commitlint, conventional commits)" so it describes the hook as \`lint-staged\` (Biome) followed by the repository-wide Gitleaks command (\`./tools/bin/gitleaks detect --source . --redact\`).
 
 - [ ] **Step 3: Update `CLAUDE.md` Tooling Git-hooks entry**
 
-Change the line "**Git hooks**: Husky pre-commit runs lint-staged (Biome check), commit-msg runs commitlint (conventional commits)." to describe the pre-commit hook as \`lint-staged\` (Biome check) followed by the repository-wide Gitleaks scan (\`./bin/gitleaks detect --source . --redact\`).
+Change the line "**Git hooks**: Husky pre-commit runs lint-staged (Biome check), commit-msg runs commitlint (conventional commits)." to describe the pre-commit hook as \`lint-staged\` (Biome check) followed by the repository-wide Gitleaks scan (\`./tools/bin/gitleaks detect --source . --redact\`).
 
 - [ ] **Step 4: Expand the design spec scope and validation**
 
@@ -108,7 +108,7 @@ git add README.md CLAUDE.md \
         docs/superpowers/plans/2026-07-16-gitleaks-precommit.md
 
 # the pre-commit hook must remain unchanged at HEAD
-test "$(git show HEAD:.husky/pre-commit)" = "pnpm exec lint-staged && ./bin/gitleaks detect --source . --redact"
+test "$(git show HEAD:.husky/pre-commit)" = "pnpm exec lint-staged && ./tools/bin/gitleaks detect --source . --redact"
 
 # review only the four intended documentation files
 git diff --cached --check
@@ -125,5 +125,5 @@ Expected: the staged diff contains only the four documentation files listed abov
 
 - [ ] Run `git status --short --untracked-files=all` and confirm the worktree is clean.
 - [ ] Confirm the pre-commit hook still blocks on a non-zero result because the two commands are joined with `&&`.
-- [ ] Confirm `README.md` and `CLAUDE.md` accurately describe the new prerequisite (a local `gitleaks` binary, or Docker as the helper fallback) and reference `./bin/gitleaks detect --source . --redact` in the Tooling Git-hooks entry.
+- [ ] Confirm `README.md` and `CLAUDE.md` accurately describe the new prerequisite (a local `gitleaks` binary, or Docker as the helper fallback) and reference `./tools/bin/gitleaks detect --source . --redact` in the Tooling Git-hooks entry.
 - [ ] Confirm `docs/superpowers/specs/2026-07-16-gitleaks-precommit-design.md` Scope and Validation sections include the documentation updates without contradicting the implemented docs.

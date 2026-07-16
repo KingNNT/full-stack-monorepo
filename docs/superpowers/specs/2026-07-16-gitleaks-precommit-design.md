@@ -12,10 +12,10 @@ Run a full-repository Gitleaks scan automatically during every commit, after the
 Update `.husky/pre-commit` on the existing Gitleaks relocation branch so it runs:
 
 ```bash
-pnpm exec lint-staged && ./bin/gitleaks detect --source . --redact
+pnpm exec lint-staged && ./tools/bin/gitleaks detect --source . --redact
 ```
 
-The command uses the root-level helper introduced by the relocation change. No changes are needed to the Gitleaks script, `.lintstagedrc.json`, package scripts, or application code.
+The command uses the `tools/bin/gitleaks` helper introduced by the relocation change. No changes are needed to the Gitleaks script, `.lintstagedrc.json`, package scripts, or application code.
 
 The hook requires either a local `gitleaks` binary on PATH or Docker (the helper falls back to `docker run zricethezav/gitleaks`). Contributor-facing docs must reflect that prerequisite so contributors understand the helper is mandatory at every commit. The following documentation updates are in scope and must agree with the implemented hook:
 
@@ -35,9 +35,9 @@ The hook requires either a local `gitleaks` binary on PATH or Docker (the helper
 ## Validation
 
 - Confirm `.husky/pre-commit` contains the exact chained command.
-- Run `bash -n .husky/pre-commit` and `bash -n bin/gitleaks`.
+- Run `bash -n .husky/pre-commit` and `bash -n tools/bin/gitleaks`.
 - Exercise the hook with a safe staged change and confirm it reaches Gitleaks successfully when no secrets are present.
-- Confirm `README.md` correctly states that either a local `gitleaks` binary or Docker is required for the pre-commit hook, and that the Tooling Git-hooks entry references `./bin/gitleaks detect --source . --redact`.
+- Confirm `README.md` correctly states that either a local `gitleaks` binary or Docker is required for the pre-commit hook, and that the Tooling Git-hooks entry references `./tools/bin/gitleaks detect --source . --redact`.
 - Confirm `CLAUDE.md` Tooling Git-hooks entry describes the pre-commit hook as `lint-staged` (Biome check) followed by the repository-wide Gitleaks scan.
 - Run `pnpm test`.
 - Run `git diff --check` and verify only the hook, this design spec, the implementation plan, `README.md`, and `CLAUDE.md` are changed.

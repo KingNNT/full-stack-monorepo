@@ -1,0 +1,7 @@
+- Install tools/dependencies: `mise install`, `pnpm install`.
+- Run all apps: `pnpm dev`; app-specific: `pnpm dev:api`, `pnpm dev:web`.
+- Quality: `pnpm build`, `mise run lint`, `mise run typecheck`, `mise run test`.
+- Single Nx targets: `pnpm nx run api:<target>` or `pnpm nx run web:<target>`.
+- Database tasks: `mise run local:db-generate`, `local:db-migrate`, `local:db-studio`, `local:db-seed`.
+- Docker tasks: `mise run local:docker-up`, `local:docker-down`, `local:docker-logs`, `local:docker-clean`.
+- List mise tasks: `mise tasks ls`.

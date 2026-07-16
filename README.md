@@ -34,12 +34,12 @@ Always inspect the script before piping to bash:
 curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | less
 ```
 
-Docker is required for the pre-commit Gitleaks scan (the helper at `./bin/gitleaks` falls back to `docker run` when no local `gitleaks` binary is on PATH); install it separately if you also plan to use `mise run local:docker-up` or integration tests.
+Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/gitleaks` falls back to `docker run` when no local `gitleaks` binary is on PATH); install it separately if you also plan to use `mise run local:docker-up` or integration tests.
 
 ## Prerequisites
 
 - [mise](https://mise.jdx.dev) — runs `mise install` to get Node LTS + pnpm
-- [gitleaks](https://github.com/gitleaks/gitleaks) — required for the pre-commit secret scan; the root helper falls back to `docker run` when no local binary is on PATH
+- [gitleaks](https://github.com/gitleaks/gitleaks) — required for the pre-commit secret scan; the helper at `tools/bin/gitleaks` falls back to `docker run` when no local binary is on PATH
 - Docker (for PostgreSQL, containerized builds, and the gitleaks helper fallback)
 
 ## Getting Started
@@ -197,10 +197,10 @@ modules/{domain}/
 | `NEXT_PUBLIC_API_BASE_URL` | API base URL | `http://localhost:8000` |
 | `NEXTAUTH_URL` | NextAuth URL | `http://localhost:3000` |
 
-**Setup:** `.mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `.mise.local.toml` (both gitignored).
+**Setup:** `mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `mise.local.toml` (both gitignored).
 
 ## Tooling
 
 - **Linter/Formatter**: Biome (API: single quotes, 2 spaces, 80 chars / Web: double quotes, tabs, 100 chars)
-- **Git hooks**: Husky pre-commit runs lint-staged (Biome) followed by the repository-wide Gitleaks scan (`./bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits)
+- **Git hooks**: Husky pre-commit runs lint-staged (Biome) followed by the repository-wide Gitleaks scan (`./tools/bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits)
 - **CI**: GitHub Actions runs `pnpm nx affected -t lint typecheck test build` on push to main and PRs
