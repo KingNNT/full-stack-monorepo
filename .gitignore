@@ -83,3 +83,6 @@ terraform.rc
 **/playwright-report/
 **/test-results/
 **/playwright/.cache/
+
+# Git worktrees
+.worktrees/
