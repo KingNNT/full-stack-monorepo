@@ -34,7 +34,7 @@ Always inspect the script before piping to bash:
 curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | less
 ```
 
-Docker is required for the pre-commit Gitleaks scan (the helper at `./bin/gitleaks` falls back to `docker run` when no local `gitleaks` binary is on PATH); install it separately if you also plan to use `mise run local:docker-up` or integration tests.
+Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/gitleaks` falls back to `docker run` when no local `gitleaks` binary is on PATH); install it separately if you also plan to use `mise run local:docker-up` or integration tests.
 
 ## Prerequisites
 
@@ -202,5 +202,5 @@ modules/{domain}/
 ## Tooling
 
 - **Linter/Formatter**: Biome (API: single quotes, 2 spaces, 80 chars / Web: double quotes, tabs, 100 chars)
-- **Git hooks**: Husky pre-commit runs lint-staged (Biome) followed by the repository-wide Gitleaks scan (`./bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits)
+- **Git hooks**: Husky pre-commit runs lint-staged (Biome) followed by the repository-wide Gitleaks scan (`./tools/bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits)
 - **CI**: GitHub Actions runs `pnpm nx affected -t lint typecheck test build` on push to main and PRs

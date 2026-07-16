@@ -147,7 +147,7 @@ Custom metrics available via `MetricsService` injectable.
 ## Tooling
 
 - **Linter/Formatter**: Biome (not ESLint/Prettier). API uses single quotes + 80 char width; Web uses double quotes + tabs + 100 char width. Each app has its own `biome.json`.
-- **Git hooks**: Husky pre-commit runs lint-staged (Biome check) followed by the repository-wide Gitleaks scan (`./bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits).
+- **Git hooks**: Husky pre-commit runs lint-staged (Biome check) followed by the repository-wide Gitleaks scan (`./tools/bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits).
 - **CI**: GitHub Actions runs `pnpm nx affected -t lint typecheck test build` on push to main and PRs.
 - **Testing**: API uses Jest + TestContainers; Web uses Vitest (unit/integration) + Playwright (e2e).
 

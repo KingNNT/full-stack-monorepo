@@ -1,4 +1,4 @@
 - `apps/web` is the Next.js 16 frontend (port 3000).
 - Source layout includes `src/app/[locale]` route groups, `apis`, `components`, `configs`, `constants`, `enums`, `exceptions`, `i18n`, `langs`, `libs`, `services`, `types`, and `utils`.
 - Web uses Ky for API access, Zustand for stores, Zod/React Hook Form, Radix/shadcn patterns, and Storybook.
-- Existing utility script of interest: `apps/web/bin/gitleaks`; no root `bin/` directory currently exists.
+- Gitleaks helper lives at `tools/bin/gitleaks` (relocated from `bin/gitleaks`).
