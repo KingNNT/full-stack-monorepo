@@ -2,17 +2,29 @@
 #
 # Interactive project scaffolding tool for KingNNT/full-stack-monorepo.
 #
-# Usage:
+# Usage (interactive):
 #   curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
 #
-# The script will prompt for:
+# Usage (non-interactive — for AI agents and CI):
+#   PROJECT_NAME=my-app \
+#   GIT_USER_NAME="John Doe" \
+#   GIT_USER_EMAIL=john@example.com \
+#     bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
+#
+# Command substitution is used instead of a pipe so stdin stays free.
+#
+# Interactive mode prompts for:
 #   1. Project name (kebab-case) — used for directory name, package names, DB name
 #   2. Your name — for local git config
 #   3. Your email — for local git config
 #
 # Env vars:
-#   BRANCH        Branch to check out (default: develop)
-#   USE_HTTPS     Set to 1 to force HTTPS clone (default: try SSH then HTTPS)
+#   PROJECT_NAME    Skip the project-name prompt (must match ^[a-z][a-z0-9-]*$)
+#   GIT_USER_NAME   Skip the git name prompt
+#   GIT_USER_EMAIL  Skip the git email prompt
+#   BRANCH          Branch to check out (default: develop)
+#   USE_HTTPS       Set to 1 to force HTTPS clone (default: try SSH then HTTPS)
+#   INSTALL_DIR     Override the target directory (default: ./<project-name>)
 
 set -euo pipefail
 
@@ -24,8 +36,8 @@ REPO_HTTPS="https://github.com/KingNNT/full-stack-monorepo.git"
 
 # --- Config (env-var overridable) --------------------------------------------
 
-# INSTALL_DIR is set dynamically in main() after prompt_project_name.
-# Override only if you need a custom path (e.g. for testing).
+# INSTALL_DIR is an optional caller override. When unset, resolve_install_dir()
+# fills in the default: ./<project-name> in the current working directory.
 INSTALL_DIR="${INSTALL_DIR:-}"
 BRANCH="${BRANCH:-develop}"
 USE_HTTPS="${USE_HTTPS:-0}"
@@ -42,7 +54,35 @@ has()  { command -v "$1" >/dev/null 2>&1; }
 # to /dev/stdin so they can feed input via stdin piping.
 : "${INPUT_FD:=/dev/tty}"
 
+# True when $INPUT_FD can actually be read. Under an agent or CI runner there is
+# no controlling terminal, so /dev/tty is unreadable and prompting is impossible.
+tty_available() {
+  [ -r "$INPUT_FD" ]
+}
+
+# Abort with instructions for the non-interactive path. $1 is the variable whose
+# absence triggered the failure.
+no_tty_die() {
+  die "Cannot prompt for $1: no terminal available (INPUT_FD=$INPUT_FD).
+Set all three variables and re-run, for example:
+
+  PROJECT_NAME=my-app \\
+  GIT_USER_NAME=\"John Doe\" \\
+  GIT_USER_EMAIL=john@example.com \\
+    bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)\""
+}
+
 prompt_project_name() {
+  if [ "${PROJECT_NAME+set}" = set ]; then
+    if [[ "$PROJECT_NAME" =~ ^[a-z][a-z0-9-]*$ ]]; then
+      log "Using PROJECT_NAME from environment: $PROJECT_NAME"
+      return 0
+    fi
+    die "PROJECT_NAME='$PROJECT_NAME' is not valid. Use lowercase letters, digits, and dashes. Must start with a letter."
+  fi
+
+  tty_available || no_tty_die "PROJECT_NAME"
+
   while true; do
     printf "==> Enter project name (kebab-case, e.g. my-saas-app): "
     local name
@@ -56,27 +96,39 @@ prompt_project_name() {
 }
 
 prompt_git_config() {
-  while true; do
-    printf "==> Enter your name (for git config, e.g. John Doe): "
-    local name
-    read -r name <"$INPUT_FD"
-    if [ -n "$name" ]; then
-      GIT_USER_NAME="$name"
-      break
-    fi
-    warn "Name cannot be empty."
-  done
+  if [ "${GIT_USER_NAME+set}" = set ]; then
+    [ -n "$GIT_USER_NAME" ] || die "GIT_USER_NAME is set but empty. Provide a name, e.g. GIT_USER_NAME=\"John Doe\"."
+    log "Using GIT_USER_NAME from environment: $GIT_USER_NAME"
+  else
+    tty_available || no_tty_die "GIT_USER_NAME"
+    while true; do
+      printf "==> Enter your name (for git config, e.g. John Doe): "
+      local name
+      read -r name <"$INPUT_FD"
+      if [ -n "$name" ]; then
+        GIT_USER_NAME="$name"
+        break
+      fi
+      warn "Name cannot be empty."
+    done
+  fi
 
-  while true; do
-    printf "==> Enter your email (for git config, e.g. john@example.com): "
-    local email
-    read -r email <"$INPUT_FD"
-    if [ -n "$email" ]; then
-      GIT_USER_EMAIL="$email"
-      break
-    fi
-    warn "Email cannot be empty."
-  done
+  if [ "${GIT_USER_EMAIL+set}" = set ]; then
+    [ -n "$GIT_USER_EMAIL" ] || die "GIT_USER_EMAIL is set but empty. Provide an email, e.g. GIT_USER_EMAIL=john@example.com."
+    log "Using GIT_USER_EMAIL from environment: $GIT_USER_EMAIL"
+  else
+    tty_available || no_tty_die "GIT_USER_EMAIL"
+    while true; do
+      printf "==> Enter your email (for git config, e.g. john@example.com): "
+      local email
+      read -r email <"$INPUT_FD"
+      if [ -n "$email" ]; then
+        GIT_USER_EMAIL="$email"
+        break
+      fi
+      warn "Email cannot be empty."
+    done
+  fi
 }
 
 rename_project() {
@@ -174,7 +226,7 @@ check_docker() {
     log "Docker $(docker --version | awk '{print $3}' | tr -d ,) OK"
     return 0
   fi
-  warn "Docker not found. The app can run without it, but 'make up' and integration tests need it."
+  warn "Docker not found. The app can run without it, but 'mise run local:docker-up-api' and integration tests need it."
   warn "  macOS: https://docs.docker.com/desktop/install/mac-install/"
   warn "  Linux: https://docs.docker.com/engine/install/"
 }
@@ -236,7 +288,16 @@ setup_env_file() {
 
 mise_install_tools() {
   log "Installing tools via mise..."
+  # mise refuses to parse an untrusted config, and hard-errors instead of
+  # prompting when there is no TTY — so trust the freshly cloned config
+  # before installing. Without this the unattended path dies here.
+  mise trust "$INSTALL_DIR/mise.toml"
   (cd "$INSTALL_DIR" && mise install)
+  # mise installs tools under its data dir; they only resolve via `mise activate`
+  # (a shell-rc hook a non-interactive shell never sources) or the shims dir.
+  # Without this, the node/pnpm calls below and `pnpm install` later fail on a
+  # machine where mise was installed by this very script.
+  eval "$(mise activate bash --shims)"
   log "Node $(node --version) + pnpm $(pnpm --version) installed"
 }
 
@@ -247,32 +308,49 @@ install_deps() {
 }
 
 print_next_steps() {
+  # git_init_fresh already ran, so HEAD exists. The branch name comes from the
+  # caller's init.defaultBranch and is not necessarily 'main'.
+  local branch
+  branch="$(git -C "$INSTALL_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  [ -n "$branch" ] || branch="<your-branch>"
+
   cat <<EOF
 
 ==> Done! Your project '$PROJECT_NAME' is ready.
 
   cd $INSTALL_DIR
 
-  # Start the full stack with Docker (recommended):
-  make up
-  make db-migrate
-  make db-seed
+  # Start PostgreSQL + the API with Docker (recommended).
+  # The first run builds the API image and can take several minutes.
+  mise run local:docker-up-api
+  mise run local:db-migrate
+  mise run local:db-seed        # needs the API from the step above
 
-  # Or run locally without Docker:
+  # Or run both apps locally without Docker (stop the api container first,
+  # it holds port 8000): docker compose stop api
   mise run dev
 
-  App:  http://localhost:3000
-  API:  http://localhost:8000
+  App:    http://localhost:3000
+  API:    http://localhost:8000
+  Health: http://localhost:8000/v1/health
 
   Git config set locally:
     user.name:  $GIT_USER_NAME
     user.email: $GIT_USER_EMAIL
 
+  This project has no 'origin' remote — the template's git history was replaced.
   To push to your own remote:
-    git remote set-url origin <your-repo-url>
-    git push -u origin main
+    git remote add origin <your-repo-url>
+    git push -u origin $branch
 
 EOF
+}
+
+# Resolves where the project will be installed. A caller-supplied INSTALL_DIR
+# wins; otherwise the project lands in ./<project-name> under the current
+# working directory. Must run after PROJECT_NAME is known.
+resolve_install_dir() {
+  INSTALL_DIR="${INSTALL_DIR:-$(pwd)/${PROJECT_NAME}}"
 }
 
 # --- Main --------------------------------------------------------------------
@@ -289,8 +367,8 @@ main() {
   prompt_project_name
   prompt_git_config
 
-  # Set install directory to ./<project-name> in current working directory
-  INSTALL_DIR="$(pwd)/${PROJECT_NAME}"
+  # Resolve install directory (respects INSTALL_DIR override if set)
+  resolve_install_dir
 
   # Validate target directory
   if [ -e "$INSTALL_DIR" ]; then

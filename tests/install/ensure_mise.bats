@@ -108,3 +108,83 @@ teardown() {
 
   rm -rf "$FAKE_INSTALL_DIR"
 }
+
+@test "mise_install_tools: trusts the cloned mise.toml by exact path before installing" {
+  FAKE_INSTALL_DIR="$(mktemp -d "${BATS_TMPDIR:-/tmp}/mise-install-dir.XXXXXX")"
+  export INSTALL_DIR="$FAKE_INSTALL_DIR"
+
+  stub mise "true"
+  stub node "echo 'v22.1.0'"
+  stub pnpm "echo '10.5.0'"
+
+  run bash -c "source '$INSTALL_SH'; mise_install_tools"
+  [ "$status" -eq 0 ]
+
+  # mise trust must be called with the specific cloned config path — not
+  # `--all`, which would trust every config in the parent chain.
+  [[ "$(calls_for mise)" == *"trust $FAKE_INSTALL_DIR/mise.toml"* ]]
+  [[ "$(calls_for mise)" != *"--all"* ]]
+
+  rm -rf "$FAKE_INSTALL_DIR"
+}
+
+@test "mise_install_tools: trusts the config before running install (call order)" {
+  FAKE_INSTALL_DIR="$(mktemp -d "${BATS_TMPDIR:-/tmp}/mise-install-dir.XXXXXX")"
+  export INSTALL_DIR="$FAKE_INSTALL_DIR"
+
+  stub mise "true"
+  stub node "echo 'v22.1.0'"
+  stub pnpm "echo '10.5.0'"
+
+  run bash -c "source '$INSTALL_SH'; mise_install_tools"
+  [ "$status" -eq 0 ]
+
+  local trust_line install_line
+  trust_line="$(calls_for mise | grep -n '^trust ' | head -1 | cut -d: -f1)"
+  install_line="$(calls_for mise | grep -n '^install$' | head -1 | cut -d: -f1)"
+
+  [ -n "$trust_line" ]
+  [ -n "$install_line" ]
+  [ "$trust_line" -lt "$install_line" ]
+
+  rm -rf "$FAKE_INSTALL_DIR"
+}
+
+@test "mise_install_tools: puts the mise shims dir on PATH after installing" {
+  FAKE_INSTALL_DIR="$(mktemp -d "${BATS_TMPDIR:-/tmp}/mise-install-dir.XXXXXX")"
+  export INSTALL_DIR="$FAKE_INSTALL_DIR"
+
+  # Freshly installed tools resolve only through the shims dir in a shell that
+  # never sourced `mise activate`. Without this, node/pnpm below would fail.
+  stub mise 'if [ "$1" = "activate" ]; then echo "export PATH=\"/fake/shims:\$PATH\""; fi'
+  stub node "echo 'v22.1.0'"
+  stub pnpm "echo '10.5.0'"
+
+  run bash -c "source '$INSTALL_SH'; mise_install_tools; echo \"FINAL_PATH=\$PATH\""
+  [ "$status" -eq 0 ]
+
+  [[ "$(calls_for mise)" == *"activate bash --shims"* ]]
+  [[ "$output" == *"FINAL_PATH=/fake/shims:"* ]]
+
+  rm -rf "$FAKE_INSTALL_DIR"
+}
+
+@test "mise_install_tools: runs mise install from inside INSTALL_DIR (not trust)" {
+  FAKE_INSTALL_DIR="$(mktemp -d "${BATS_TMPDIR:-/tmp}/mise-install-dir.XXXXXX")"
+  export INSTALL_DIR="$FAKE_INSTALL_DIR"
+
+  # Record the cwd only for the `install` invocation, so this fails if the
+  # `install` subshell's cwd ever regresses.
+  stub mise 'if [ "$1" = "install" ]; then pwd > "$STUB_DIR/mise_install_pwd"; fi'
+  stub node "echo 'v22.1.0'"
+  stub pnpm "echo '10.5.0'"
+
+  run bash -c "source '$INSTALL_SH'; mise_install_tools"
+  [ "$status" -eq 0 ]
+
+  local expected_pwd
+  expected_pwd="$(cd "$FAKE_INSTALL_DIR" && pwd)"
+  [ "$(cat "$STUB_DIR/mise_install_pwd")" = "$expected_pwd" ]
+
+  rm -rf "$FAKE_INSTALL_DIR"
+}
