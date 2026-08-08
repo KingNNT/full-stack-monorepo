@@ -18,21 +18,36 @@ Nx monorepo with a NestJS API backend and Next.js web frontend.
 One-liner for a fresh macOS or Linux machine (installs mise, then Node LTS + pnpm via `mise install`, clones the repo, copies `.env`, runs `pnpm install`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
 ```
 
 Optional overrides:
 
 ```bash
 INSTALL_DIR=~/code/monorepo BRANCH=main USE_HTTPS=1 \
-  curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
 ```
 
 Always inspect the script before piping to bash:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KingNNT/nestjs-nextjs-monorepo/develop/install.sh | less
+curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | less
 ```
+
+### Install with an AI agent
+
+`install.sh` skips its prompts when the three values are supplied as environment
+variables, so an agent can run it unattended:
+
+```bash
+PROJECT_NAME=my-app \
+GIT_USER_NAME="John Doe" \
+GIT_USER_EMAIL=john@example.com \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
+```
+
+Agents should read [`AGENTS.md`](AGENTS.md) first; the full runbook — including
+setup for an already-cloned repo — is in [`docs/AGENT_INSTALL.md`](docs/AGENT_INSTALL.md).
 
 Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/gitleaks` falls back to `docker run` when no local `gitleaks` binary is on PATH); install it separately if you also plan to use `mise run local:docker-up` or integration tests.
 
@@ -46,27 +61,29 @@ Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/
 
 ```bash
 # Install tools + dependencies
-mise install
+mise trust ./mise.toml && mise install
 pnpm install
 
 # Copy env file
 cp .env.example .env
 
-# Start PostgreSQL
-mise run local:docker-up-api    # starts postgres + api
-# or just postgres:
-docker compose up -d postgres
+# Start PostgreSQL + API (first run builds the API image — several minutes)
+mise run local:docker-up-api
 
 # Run database migrations
 mise run local:db-migrate
 
-# Seed RBAC data
+# Seed RBAC data + default users (registers them through the API, so it must be up)
 mise run local:db-seed
 
-# Start development
+# Start development — stop the api container first, it holds port 8000:
+#   docker compose stop api
 mise run dev       # both apps
 pnpm dev:api       # API only (port 8000)
 pnpm dev:web       # Web only (port 3000)
+
+# API health check (the path is versioned)
+curl http://localhost:8000/v1/health
 
 # Storybook
 pnpm storybook:web   # Web component playground

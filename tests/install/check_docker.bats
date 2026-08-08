@@ -25,3 +25,10 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Docker not found"* ]]
 }
+
+@test "check_docker: names a real mise task, not a nonexistent make target" {
+  run bash -c "$(isolate_path_snippet); source '$INSTALL_SH'; check_docker"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"mise run local:docker-up-api"* ]]
+  [[ "$output" != *"make up"* ]]
+}

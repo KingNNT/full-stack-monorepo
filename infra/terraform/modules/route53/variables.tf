@@ -30,7 +30,7 @@ variable "cloudfront_hosted_zone_id" {
 variable "api_health_check_path" {
   description = "Health check path for API"
   type        = string
-  default     = "/health"
+  default     = "/v1/health"
 }
 
 variable "tags" {

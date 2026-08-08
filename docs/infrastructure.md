@@ -243,8 +243,8 @@ Deployment
 ├── 2 replicas (default), HPA: 2-10 based on CPU/memory
 ├── Container: port 8000
 ├── envFrom: ConfigMap (env vars) + Secret (credentials)
-├── Readiness probe: GET /health (10s interval, 10s initial delay)
-├── Liveness probe: GET /health (20s interval, 15s initial delay)
+├── Readiness probe: GET /v1/health (10s interval, 10s initial delay)
+├── Liveness probe: GET /v1/health (20s interval, 15s initial delay)
 ├── Resources: 250m/256Mi → 500m/512Mi
 ├── Security: runAsNonRoot, runAsUser 1001
 └── Pod anti-affinity: soft (prefer spread across AZs)
@@ -255,7 +255,7 @@ Service (ClusterIP)
 Ingress (ALB)
 ├── internet-facing, HTTPS 443 only
 ├── SSL redirect, ACM certificate
-└── Health check: /health
+└── Health check: /v1/health
 
 HPA
 └── Scale up when CPU > 70% or memory > 80%
@@ -327,7 +327,7 @@ Stage 3: Helm Deploy
 
 Stage 4: Smoke Test
   └── buildspec-smoke-test.yml
-  └── GET /health → expect HTTP 200
+  └── GET /v1/health → expect HTTP 200
   └── On failure: helm rollback api + web
 ```
 
