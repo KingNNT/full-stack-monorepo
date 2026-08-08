@@ -20,7 +20,7 @@ phases:
         fi
 
         echo "Testing API at: $API_URL"
-        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${API_URL}/health" --max-time 15 || echo "000")
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${API_URL}/v1/health" --max-time 15 || echo "000")
 
         if [ "$STATUS" != "200" ]; then
           echo "ERROR: API health check failed (HTTP $STATUS)"
