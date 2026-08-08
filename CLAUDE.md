@@ -10,6 +10,8 @@ Full-stack Monorepo — Nx monorepo with a NestJS API backend and Next.js web fr
 
 **Tool setup:** Run `mise install` to install Node (LTS) and pnpm. mise also manages env vars and tasks. See `mise tasks ls` for all available commands.
 
+**AI agents:** `AGENTS.md` is the cross-tool entrypoint; `docs/AGENT_INSTALL.md` is the full install/setup runbook.
+
 ## Common Commands
 
 ```bash
