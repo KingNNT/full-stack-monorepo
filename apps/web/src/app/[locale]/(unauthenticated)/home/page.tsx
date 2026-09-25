@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { HomeView } from "@/components/home/home-view";
+import { Hero } from "@/components/marketing/hero";
 import type { ILocalePageProps } from "@/types/page";
 
 export async function generateMetadata({ params }: ILocalePageProps): Promise<Metadata> {
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: ILocalePageProps): Promise<Me
 }
 
 const HomePage = () => {
-	return <HomeView />;
+	return <Hero />;
 };
 
 export default HomePage;
