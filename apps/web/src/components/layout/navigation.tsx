@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
+import { Logo } from "@/components/brand/logo";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { ModeToggle } from "@/components/theme/mode-toggler";
 
@@ -14,8 +15,8 @@ export const Navigation = () => {
 	return (
 		<header className="border-b bg-card py-4">
 			<div className="container mx-auto flex items-center justify-between">
-				<Link href="/">
-					<h1 className="font-semibold text-2xl">{t("title")}</h1>
+				<Link href="/" aria-label="FullStack Monorepo home">
+					<Logo height={28} />
 				</Link>
 				<nav className="flex items-center space-x-6">
 					{status !== "authenticated" ? (

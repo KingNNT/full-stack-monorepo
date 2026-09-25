@@ -4,6 +4,7 @@ import { LayoutDashboard, Settings, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/libs/utils";
 
@@ -59,6 +60,13 @@ export const PrivateSidebar = ({ isOpen = true, onClose }: IPrivateSidebarProps)
 				)}
 				style={{ width: "250px" }}
 			>
+				{/* Brand */}
+				<div className="flex items-center border-b p-4">
+					<Link href="/" aria-label="FullStack Monorepo home">
+						<Logo height={28} />
+					</Link>
+				</div>
+
 				{/* Close button for mobile */}
 				<div className="flex items-center justify-between border-b p-4 lg:hidden">
 					<h2 className="font-semibold text-lg">{t("menu")}</h2>
