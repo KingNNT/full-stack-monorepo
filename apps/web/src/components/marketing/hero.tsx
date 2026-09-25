@@ -28,7 +28,7 @@ export const Hero = () => {
 			<p className="max-w-prose text-base text-muted-foreground">{INTRO_PARAGRAPH}</p>
 
 			<div className="flex flex-wrap items-center justify-center gap-4">
-				<Button asChild className="text-zinc-900 dark:text-zinc-50">
+				<Button asChild>
 					<Link href={loginHref}>Sign In</Link>
 				</Button>
 				<Button asChild variant="outline">
