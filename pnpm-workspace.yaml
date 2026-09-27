@@ -16,3 +16,5 @@ allowBuilds:
   ssh2: true
   unrs-resolver: true
 
+overrides:
+  yaml@1: ^1.10.3
