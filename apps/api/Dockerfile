@@ -1,8 +1,8 @@
-FROM node:24-alpine AS dev
+FROM node:lts-alpine AS dev
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+RUN npm install -g pnpm@11
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
@@ -15,62 +15,26 @@ EXPOSE 8000
 
 CMD ["pnpm", "dev"]
 
-FROM node:24-alpine AS builder
+FROM node:lts-alpine AS builder
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+RUN npm install -g pnpm@11
 
-COPY package.json ./
-COPY pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/
 
-RUN cat <<'EOF' > pnpm-workspace.yaml
-packages:
-  - apps/api
-EOF
 RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/api...
 
 WORKDIR /app/apps/api
 COPY apps/api/ .
 
-# Create a standalone tsconfig.build for Docker (no extends chain to root)
-RUN cat <<'TSEOF' > tsconfig.json
-{
-  "compilerOptions": {
-    "target": "es2022",
-    "lib": ["es2022"],
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "strict": true,
-    "skipLibCheck": true,
-    "isolatedModules": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
-  }
-}
-TSEOF
-RUN cat <<'TSEOF' > tsconfig.build.json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "declaration": false
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
-}
-TSEOF
-
-RUN pnpm exec nest build
+RUN pnpm build
 
 # Use pnpm deploy for a self-contained production directory
 RUN pnpm --filter @fullstack-monorepo-app/api deploy --legacy --prod /app/deploy
 
-FROM node:24-alpine AS runner
+FROM node:lts-alpine AS runner
 
 WORKDIR /app
 
@@ -88,4 +52,4 @@ USER nestjs
 
 EXPOSE 8000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "--require", "./dist/src/instrumentation.js", "dist/src/main"]

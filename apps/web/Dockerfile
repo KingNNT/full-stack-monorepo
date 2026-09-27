@@ -1,8 +1,8 @@
-FROM node:24-alpine AS dev
+FROM node:lts-alpine AS dev
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+RUN npm install -g pnpm@11
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
@@ -19,59 +19,25 @@ EXPOSE 3000
 
 CMD ["pnpm", "dev"]
 
-FROM node:24-alpine AS builder
+FROM node:lts-alpine AS builder
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+RUN npm install -g pnpm@11
 
-COPY package.json ./
-COPY pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/web/package.json ./apps/web/
 
-RUN cat <<'EOF' > pnpm-workspace.yaml
-packages:
-  - apps/web
-EOF
 RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/web...
 
 WORKDIR /app/apps/web
 COPY apps/web/ .
 
-# Create a standalone tsconfig for Docker (no extends to root)
-RUN cat <<'TSEOF' > tsconfig.json
-{
-  "compilerOptions": {
-    "target": "es2022",
-    "lib": ["es2022"],
-    "strict": true,
-    "skipLibCheck": true,
-    "isolatedModules": true,
-    "composite": false,
-    "emitDeclarationOnly": false,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "jsx": "preserve",
-    "incremental": true,
-    "noEmit": true,
-    "allowJs": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    },
-    "plugins": [{ "name": "next" }]
-  },
-  "include": ["src", "next-env.d.ts", "next.config.ts"],
-  "exclude": ["node_modules", "dist", ".next", ".storybook", "**/*.stories.tsx"]
-}
-TSEOF
-
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN pnpm exec next build
+RUN pnpm build
 
-FROM node:24-alpine AS runner
+FROM node:lts-alpine AS runner
 
 WORKDIR /app
 
