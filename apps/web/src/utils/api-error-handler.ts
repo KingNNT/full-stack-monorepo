@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { HttpStatusError } from "@/apis/errors";
 import type { TAuthServiceErrorCode } from "@/constants/error-codes";
 import { AUTH_SERVICE_ERROR_CODES } from "@/constants/error-codes";
 import { AuthException } from "@/exceptions";
@@ -14,6 +15,7 @@ import logger from "./logger";
 /**
  * Handles errors and returns appropriate NextResponse
  * Converts AuthException to structured error response
+ * Forwards 4xx responses from the backend API with their original status
  * Falls back to generic 500 error for unexpected exceptions
  *
  * NOTE: When using createApiRoute wrapper, you can throw exceptions directly
@@ -45,6 +47,22 @@ export function handleApiError(
 				success: false,
 				message: error.message,
 				error: error.code,
+				...(errorTraceId && { errorTraceId }),
+			},
+			{ status: error.statusCode },
+		);
+	}
+
+	// Forward client errors from the backend API (validation, conflict, rate limit)
+	// with their original status instead of masking them as 500s
+	if (error instanceof HttpStatusError && error.statusCode >= 400 && error.statusCode < 500) {
+		const upstream = (error.response ?? {}) as { message?: string; error?: string };
+		return NextResponse.json(
+			{
+				status_code: error.statusCode,
+				success: false,
+				message: upstream.message ?? error.statusText,
+				error: upstream.error as TAuthServiceErrorCode | undefined,
 				...(errorTraceId && { errorTraceId }),
 			},
 			{ status: error.statusCode },

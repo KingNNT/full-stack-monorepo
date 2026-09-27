@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpStatusError } from "@/apis/errors";
 import { AUTH_SERVICE_ERROR_CODES } from "@/constants/error-codes";
 import { InvalidEmailException, MissingCredentialsException } from "@/exceptions";
 
@@ -104,5 +105,31 @@ describe("handleApiError", () => {
 			message: "An unexpected error occurred",
 			error: AUTH_SERVICE_ERROR_CODES.INTERNAL_ERROR,
 		});
+	});
+
+	it("forwards a 4xx from the backend API with its status, message and code", () => {
+		const error = new HttpStatusError(429, "Too Many Requests", {
+			message: "ThrottlerException: Too Many Requests",
+			error: "TOO_MANY_REQUESTS",
+		});
+		const response = handleApiError(error) as unknown as {
+			status: number;
+			body: Record<string, unknown>;
+		};
+
+		expect(response.status).toBe(429);
+		expect(response.body).toMatchObject({
+			status_code: 429,
+			success: false,
+			message: "ThrottlerException: Too Many Requests",
+			error: "TOO_MANY_REQUESTS",
+		});
+	});
+
+	it("masks a 5xx from the backend API as a 500", () => {
+		const error = new HttpStatusError(502, "Bad Gateway");
+		const response = handleApiError(error) as unknown as { status: number };
+
+		expect(response.status).toBe(500);
 	});
 });

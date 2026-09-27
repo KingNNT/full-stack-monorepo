@@ -5,6 +5,17 @@ import logger from "./logger";
 
 type THandler = (request: NextRequest, context?: unknown) => Promise<Response>;
 
+// Never write credentials to the logs: the Auth.js session cookie carries the API tokens
+const REDACTED_HEADERS = new Set(["authorization", "cookie", "set-cookie", "x-csrf-token"]);
+
+export const redactHeaders = (entries: Iterable<[string, string]>): Record<string, string> =>
+	Object.fromEntries(
+		Array.from(entries, ([name, value]) => [
+			name,
+			REDACTED_HEADERS.has(name.toLowerCase()) ? "[REDACTED]" : value,
+		]),
+	);
+
 export const _200 = (data: object, message: string = "Success") =>
 	NextResponse.json(
 		{
@@ -73,7 +84,7 @@ export function createApiRoute(handler: THandler): THandler {
 					pathname,
 					searchParams: Object.fromEntries(searchParams),
 				},
-				headers: Object.fromEntries(headersList.entries()),
+				headers: redactHeaders(headersList.entries()),
 			});
 
 			return handleApiError(error, true);
