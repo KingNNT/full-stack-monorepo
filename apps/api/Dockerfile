@@ -28,6 +28,9 @@ COPY apps/api/package.json ./apps/api/
 RUN cat <<'EOF' > pnpm-workspace.yaml
 packages:
   - apps/api
+
+overrides:
+  yaml@1: ^1.10.3
 EOF
 RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/api...
 

@@ -32,6 +32,9 @@ COPY apps/web/package.json ./apps/web/
 RUN cat <<'EOF' > pnpm-workspace.yaml
 packages:
   - apps/web
+
+overrides:
+  yaml@1: ^1.10.3
 EOF
 RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/web...
 
@@ -63,7 +66,7 @@ RUN cat <<'TSEOF' > tsconfig.json
     "plugins": [{ "name": "next" }]
   },
   "include": ["src", "next-env.d.ts", "next.config.ts"],
-  "exclude": ["node_modules", "dist", ".next", ".storybook", "**/*.stories.tsx"]
+  "exclude": ["node_modules", "dist", ".next", ".storybook", "**/*.stories.tsx", "**/*.test.ts", "**/*.test.tsx"]
 }
 TSEOF
 
