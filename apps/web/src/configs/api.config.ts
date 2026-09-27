@@ -5,8 +5,9 @@
 
 export interface ApiConfig {
 	/**
-	 * Base URL for API requests
-	 * @default process.env.NEXT_PUBLIC_API_BASE_URL || ''
+	 * Base URL for API requests. Server-only: read at runtime, so the browser
+	 * gets '' and calls the same-origin Next.js route handlers instead.
+	 * @default process.env.API_BASE_URL || ''
 	 */
 	baseUrl: string;
 
@@ -46,11 +47,11 @@ export interface ApiConfig {
  * Reads from environment variables with sensible defaults
  */
 export const apiConfig: ApiConfig = {
-	baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || "",
-	timeout: Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 30_000,
-	maxRetries: Number(process.env.NEXT_PUBLIC_API_MAX_RETRIES) || 3,
-	retryDelay: Number(process.env.NEXT_PUBLIC_API_RETRY_DELAY) || 1000,
-	retryBackoffMultiplier: Number(process.env.NEXT_PUBLIC_API_RETRY_BACKOFF) || 2,
+	baseUrl: process.env.API_BASE_URL || "",
+	timeout: Number(process.env.API_TIMEOUT) || 30_000,
+	maxRetries: Number(process.env.API_MAX_RETRIES) || 3,
+	retryDelay: Number(process.env.API_RETRY_DELAY) || 1000,
+	retryBackoffMultiplier: Number(process.env.API_RETRY_BACKOFF) || 2,
 	headers: {
 		"Content-Type": "application/json",
 	},

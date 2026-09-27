@@ -90,15 +90,15 @@ ENV
 @test "setup_env_file: does not overwrite non-secret values" {
   cat > "$WORK_DIR/.env.example" <<'ENV'
 JWT_ACCESS_SECRET=change-me
-PORT=8000
+API_PORT=8000
 NODE_ENV=development
 ENV
 
   run bash -c "INSTALL_DIR='$WORK_DIR'; source '$INSTALL_SH'; setup_env_file"
   [ "$status" -eq 0 ]
 
-  run grep "^PORT=" "$WORK_DIR/.env"
-  [[ "$output" == "PORT=8000" ]]
+  run grep "^API_PORT=" "$WORK_DIR/.env"
+  [[ "$output" == "API_PORT=8000" ]]
 
   run grep "^NODE_ENV=" "$WORK_DIR/.env"
   [[ "$output" == "NODE_ENV=development" ]]

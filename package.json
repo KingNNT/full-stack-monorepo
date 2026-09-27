@@ -15,15 +15,15 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.2",
-    "@commitlint/cli": "^20.1.0",
-    "@commitlint/config-conventional": "^20.1.0",
-    "@nx/js": "22.5.4",
-    "bats": "^1.11.1",
+    "@biomejs/biome": "2.5.14",
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
+    "@nx/js": "22.7.12",
+    "bats": "^1.13.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "nx": "22.5.4",
-    "tslib": "^2.3.0",
-    "typescript": "~5.9.2"
+    "lint-staged": "^16.4.0",
+    "nx": "22.7.12",
+    "tslib": "^2.8.1",
+    "typescript": "~5.9.3"
   }
 }

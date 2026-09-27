@@ -87,7 +87,6 @@ YAML
   cat > "$WORK_DIR/.env" <<'ENV'
 POSTGRES_DB=fullstack_monorepo_dev
 DATABASE_URL=postgresql://postgres:password@localhost:5432/fullstack_monorepo_dev
-APP_NAME=shadcn-next-app
 ENV
 
   cd "$WORK_DIR" && git init && git add -A && git commit -m "init" --quiet 2>/dev/null
@@ -98,5 +97,4 @@ ENV
   run cat "$WORK_DIR/.env"
   [[ "$output" == *"my_saas_dev"* ]]
   [[ "$output" != *"fullstack_monorepo_dev"* ]]
-  [[ "$output" == *"APP_NAME=my-saas"* ]]
 }

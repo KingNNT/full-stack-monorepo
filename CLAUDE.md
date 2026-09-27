@@ -157,6 +157,6 @@ Custom metrics available via `MetricsService` injectable.
 
 Environment is managed by mise. `mise.toml` loads `.env` for shared config. Create `mise.local.toml` with `_.file = ".env.local"` for personal overrides (gitignored).
 
-Each app has a `.env.example` file. Key variables:
-- API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `PORT`
-- Web: `AUTH_SECRET`, `NEXT_PUBLIC_API_BASE_URL`, `NEXTAUTH_URL`
+All apps share the root `.env` (template: `.env.example`). Key variables:
+- API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `API_PORT`
+- Web: `AUTH_SECRET`, `API_BASE_URL`, `AUTH_URL`

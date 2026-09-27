@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
 	title: "FullStack Monorepo",
 	description: "FullStack Monorepo — A foundation for your next project.",
-	metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+	metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
 	applicationName: "FullStack Monorepo",
 	generator: "Next.js",
 	icons: {
