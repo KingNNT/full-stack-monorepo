@@ -213,9 +213,9 @@ modules/{domain}/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `AUTH_SECRET` | NextAuth secret | - |
-| `NEXT_PUBLIC_API_BASE_URL` | API base URL | `http://localhost:8000` |
+| `API_BASE_URL` | API base URL (server-side, read at runtime) | `http://localhost:8000` |
 | `AUTH_URL` | Auth.js URL | `http://localhost:3000` |
-| `NEXT_PUBLIC_APP_URL` | Public site URL (metadata, sitemap) | `http://localhost:3000` |
+| `APP_URL` | Public site URL (metadata, sitemap) | `http://localhost:3000` |
 
 **Setup:** `mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `mise.local.toml` (both gitignored).
 

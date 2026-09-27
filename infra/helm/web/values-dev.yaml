@@ -25,7 +25,7 @@ pdb:
   enabled: false
 
 env:
-  NEXT_PUBLIC_API_BASE_URL: http://api.localhost
+  API_BASE_URL: http://api:8000
   AUTH_URL: http://localhost:3000
 
 secrets:

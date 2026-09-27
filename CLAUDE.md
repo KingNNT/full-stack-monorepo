@@ -159,4 +159,4 @@ Environment is managed by mise. `mise.toml` loads `.env` for shared config. Crea
 
 All apps share the root `.env` (template: `.env.example`). Key variables:
 - API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `API_PORT`
-- Web: `AUTH_SECRET`, `NEXT_PUBLIC_API_BASE_URL`, `AUTH_URL`
+- Web: `AUTH_SECRET`, `API_BASE_URL`, `AUTH_URL`

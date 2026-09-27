@@ -1,8 +1,11 @@
 import type { MetadataRoute } from "next";
 import { LocaleSupport } from "@/enums";
 
+// Read APP_URL at request time rather than baking it in at build time
+export const dynamic = "force-dynamic";
+
 export default function sitemap(): MetadataRoute.Sitemap {
-	const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://kingNNT.org";
+	const baseUrl = process.env.APP_URL || "https://kingNNT.org";
 	const locales = Object.values(LocaleSupport);
 	const routes = ["home", "about", "contact"];
 

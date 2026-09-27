@@ -21,7 +21,7 @@ ingress:
   certificateArn: ""
 
 env:
-  NEXT_PUBLIC_API_BASE_URL: https://api.example.com
+  API_BASE_URL: http://api:8000
   AUTH_URL: https://example.com
 
 secrets: {}
