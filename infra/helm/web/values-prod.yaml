@@ -22,6 +22,6 @@ ingress:
 
 env:
   NEXT_PUBLIC_API_BASE_URL: https://api.example.com
-  NEXTAUTH_URL: https://example.com
+  AUTH_URL: https://example.com
 
 secrets: {}

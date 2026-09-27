@@ -26,7 +26,7 @@ pdb:
 
 env:
   NEXT_PUBLIC_API_BASE_URL: http://api.localhost
-  NEXTAUTH_URL: http://localhost:3000
+  AUTH_URL: http://localhost:3000
 
 secrets:
   AUTH_SECRET: dev-auth-secret-change-me-min-32-chars

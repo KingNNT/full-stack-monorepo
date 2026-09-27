@@ -15,7 +15,7 @@ services:
       - /app/apps/api/node_modules
       - /app/apps/web/node_modules
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_PORT:-8000}:${API_PORT:-8000}"
 
   web:
     build:

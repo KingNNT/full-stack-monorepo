@@ -80,5 +80,5 @@ ApiClientException
 
 - All secrets via environment variables — never hardcoded
 - `.env.example` documents required variables — keep updated
-- Key vars: `AUTH_SECRET`, `NEXT_PUBLIC_API_BASE_URL`, `NEXTAUTH_URL`
+- Key vars: `AUTH_SECRET`, `NEXT_PUBLIC_API_BASE_URL`, `AUTH_URL`
 - `NEXT_PUBLIC_*` vars are exposed to the browser — never put secrets in them

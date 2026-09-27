@@ -194,7 +194,7 @@ modules/{domain}/
 
 ## Environment Variables
 
-### API (`apps/api/.env`)
+### API
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -203,16 +203,19 @@ modules/{domain}/
 | `JWT_REFRESH_SECRET` | Refresh token signing secret | - |
 | `JWT_ACCESS_EXPIRES_IN` | Access token TTL | `15m` |
 | `JWT_REFRESH_EXPIRES_IN` | Refresh token TTL | `7d` |
-| `PORT` | API port | `8000` |
+| `API_PORT` | API port | `8000` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins | `http://localhost:3000` |
+| `LOG_LEVEL` | Pino log level | `debug` (dev) / `info` (prod) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector (gRPC) | `http://localhost:4317` |
 
-### Web (`apps/web/.env`)
+### Web
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `AUTH_SECRET` | NextAuth secret | - |
 | `NEXT_PUBLIC_API_BASE_URL` | API base URL | `http://localhost:8000` |
-| `NEXTAUTH_URL` | NextAuth URL | `http://localhost:3000` |
+| `AUTH_URL` | Auth.js URL | `http://localhost:3000` |
+| `NEXT_PUBLIC_APP_URL` | Public site URL (metadata, sitemap) | `http://localhost:3000` |
 
 **Setup:** `mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `mise.local.toml` (both gitignored).
 

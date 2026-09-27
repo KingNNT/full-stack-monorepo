@@ -167,13 +167,6 @@ rename_project() {
     rm -f "${filepath}.bak"
   done <<< "$files"
 
-  # Also update APP_NAME in .env
-  local env_file="$INSTALL_DIR/.env"
-  if [ -f "$env_file" ]; then
-    sed -i.bak "s|^APP_NAME=.*|APP_NAME=${PROJECT_NAME}|" "$env_file"
-    rm -f "${env_file}.bak"
-  fi
-
   log "Project renamed to $PROJECT_NAME"
 }
 
