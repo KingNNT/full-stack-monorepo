@@ -4,17 +4,20 @@
  * Throws exceptions on errors - API layer handles exception to response conversion
  */
 
-import { authApi } from "@/apis";
+import { authApi, userApi } from "@/apis";
 import { HttpStatusError } from "@/apis/errors";
 import {
 	EmailExistsException,
 	InvalidCredentialsException,
 	InvalidEmailException,
-	InvalidNameException,
 	InvalidPasswordException,
+	InvalidUsernameException,
 	MissingCredentialsException,
 } from "@/exceptions";
-import type { IUser } from "@/types/user";
+import type { IAuthenticatedUser, IRegisterData } from "@/types/auth";
+
+const PASSWORD_MIN_LENGTH = 8;
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 /**
  * AuthService class
@@ -30,10 +33,17 @@ export class AuthService {
 	}
 
 	/**
-	 * Validates password requirements
+	 * Validates password requirements (mirrors the API rule)
 	 */
 	validatePasswordFormat(password: string): boolean {
-		return password.length >= 6;
+		return password.length >= PASSWORD_MIN_LENGTH;
+	}
+
+	/**
+	 * Validates username format (mirrors the API rule)
+	 */
+	validateUsernameFormat(username: string): boolean {
+		return USERNAME_REGEX.test(username);
 	}
 
 	/**
@@ -41,13 +51,13 @@ export class AuthService {
 	 *
 	 * @param email - User's email address
 	 * @param password - User's password
-	 * @returns User data if credentials are valid
+	 * @returns The user's profile plus API tokens if credentials are valid
 	 * @throws {MissingCredentialsException} If email or password is missing
 	 * @throws {InvalidEmailException} If email format is invalid
 	 * @throws {InvalidPasswordException} If password format is invalid
 	 * @throws {InvalidCredentialsException} If credentials don't match
 	 */
-	async login(email: string, password: string): Promise<IUser> {
+	async login(email: string, password: string): Promise<IAuthenticatedUser> {
 		if (!email || !password) {
 			throw new MissingCredentialsException("Email and password are required");
 		}
@@ -57,12 +67,22 @@ export class AuthService {
 		}
 
 		if (!this.validatePasswordFormat(password)) {
-			throw new InvalidPasswordException("Password must be at least 6 characters");
+			throw new InvalidPasswordException("Password must be at least 8 characters");
 		}
 
 		try {
-			const result = await authApi.login({ email, password });
-			return result.user;
+			const tokens = await authApi.login({ identifier: email, password });
+			const profile = await userApi.getProfile({
+				headers: { Authorization: `Bearer ${tokens.access_token}` },
+			});
+
+			return {
+				id: profile.user_id,
+				email: profile.email,
+				username: profile.username,
+				accessToken: tokens.access_token,
+				refreshToken: tokens.refresh_token,
+			};
 		} catch (error) {
 			if (error instanceof HttpStatusError && error.statusCode === 401) {
 				throw new InvalidCredentialsException("Invalid email or password");
@@ -74,23 +94,25 @@ export class AuthService {
 	/**
 	 * Registers a new user account
 	 *
-	 * @param name - User's full name
+	 * @param username - Username (3-30 letters, numbers or underscores)
 	 * @param email - User's email address
 	 * @param password - User's password
-	 * @returns Created user data
+	 * @returns The created user's ID
 	 * @throws {MissingCredentialsException} If any required field is missing
-	 * @throws {InvalidNameException} If name is too short
+	 * @throws {InvalidUsernameException} If username format is invalid
 	 * @throws {InvalidEmailException} If email format is invalid
 	 * @throws {InvalidPasswordException} If password format is invalid
-	 * @throws {EmailExistsException} If email is already registered
+	 * @throws {EmailExistsException} If email or username is already registered
 	 */
-	async register(name: string, email: string, password: string): Promise<IUser> {
-		if (!name || !email || !password) {
-			throw new MissingCredentialsException("Name, email and password are required");
+	async register(username: string, email: string, password: string): Promise<IRegisterData> {
+		if (!username || !email || !password) {
+			throw new MissingCredentialsException("Username, email and password are required");
 		}
 
-		if (name.trim().length < 2) {
-			throw new InvalidNameException("Name must be at least 2 characters");
+		if (!this.validateUsernameFormat(username)) {
+			throw new InvalidUsernameException(
+				"Username must be 3-30 characters: letters, numbers or underscores",
+			);
 		}
 
 		if (!this.validateEmailFormat(email)) {
@@ -98,15 +120,14 @@ export class AuthService {
 		}
 
 		if (!this.validatePasswordFormat(password)) {
-			throw new InvalidPasswordException("Password must be at least 6 characters");
+			throw new InvalidPasswordException("Password must be at least 8 characters");
 		}
 
 		try {
-			const result = await authApi.register({ name, email, password });
-			return result.user;
+			return await authApi.register({ username, email, password });
 		} catch (error) {
 			if (error instanceof HttpStatusError && error.statusCode === 409) {
-				throw new EmailExistsException("An account with this email already exists");
+				throw new EmailExistsException("An account with this email or username already exists");
 			}
 			throw error;
 		}

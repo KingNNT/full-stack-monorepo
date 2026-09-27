@@ -21,10 +21,10 @@ export const authConfig = {
 					const email = credentials.email as string;
 					const password = credentials.password as string;
 
-					// Service now returns user directly or throws exception
+					// Service returns the user plus API tokens, or throws
 					const user = await authService.login(email, password);
 
-					return user;
+					return { ...user, name: user.username };
 				} catch (error) {
 					// Convert AuthException to NextAuth error with code
 					if (error instanceof AuthException) {
@@ -44,6 +44,28 @@ export const authConfig = {
 		authorized() {
 			// Let middleware handle all authentication logic
 			return true;
+		},
+		jwt({ token, user }) {
+			// `user` is only set on sign-in: keep the API tokens in the encrypted JWT cookie
+			if (user) {
+				token.id = user.id;
+				token.username = user.username;
+				token.accessToken = user.accessToken;
+				token.refreshToken = user.refreshToken;
+			}
+			return token;
+		},
+		session({ session, token }) {
+			// Expose what the API client needs; the refresh token stays server-side
+			// JWT is Record<string, unknown>: these fields are written by the jwt callback above
+			session.accessToken = token.accessToken as string | undefined;
+			if (typeof token.id === "string") {
+				session.user.id = token.id;
+			}
+			if (typeof token.username === "string") {
+				session.user.username = token.username;
+			}
+			return session;
 		},
 	},
 	session: {

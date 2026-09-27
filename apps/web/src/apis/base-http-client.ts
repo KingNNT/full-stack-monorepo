@@ -70,7 +70,9 @@ export class BaseHttpClient {
 			timeout: apiConfig.timeout,
 			retry: {
 				limit: apiConfig.maxRetries,
-				methods: ["get", "post", "put", "patch", "delete"],
+				// Idempotent methods only: retrying POST/PATCH can duplicate writes and
+				// burns through the API's auth rate limit
+				methods: ["get", "put", "delete"],
 				statusCodes: [408, 413, 429, 500, 502, 503, 504],
 				backoffLimit:
 					apiConfig.retryDelay * apiConfig.retryBackoffMultiplier ** apiConfig.maxRetries,
@@ -79,6 +81,11 @@ export class BaseHttpClient {
 			hooks: {
 				beforeRequest: [
 					async (request) => {
+						// Keep an explicitly provided token (e.g. right after login)
+						if (request.headers.has("Authorization")) {
+							return;
+						}
+
 						// Inject auth token if available
 						const token = await this.getAuthToken();
 						if (token) {
@@ -99,10 +106,9 @@ export class BaseHttpClient {
 			},
 		};
 
-		// Only set prefixUrl if baseUrl is provided
-		if (apiConfig.baseUrl) {
-			clientOptions.prefixUrl = apiConfig.baseUrl;
-		}
+		// Without a base URL (browser), resolve paths from the origin root so they hit
+		// the same-origin route handlers rather than the current page's path
+		clientOptions.prefixUrl = apiConfig.baseUrl || "/";
 
 		this.client = ky.create(clientOptions);
 	}
@@ -114,8 +120,7 @@ export class BaseHttpClient {
 	private async getAuthToken(): Promise<string | null> {
 		try {
 			const session = await getSession();
-			// @ts-expect-error - NextAuth session may have accessToken
-			return session?.user?.accessToken || session?.accessToken || null;
+			return session?.accessToken ?? null;
 		} catch {
 			return null;
 		}

@@ -41,7 +41,7 @@
 			"generalError": "Đã xảy ra lỗi. Vui lòng thử lại.",
 			"validation": {
 				"invalidEmail": "Địa chỉ email không hợp lệ",
-				"passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự"
+				"passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự"
 			},
 			"noAccount": "Chưa có tài khoản?",
 			"registerLink": "Đăng ký tại đây"
@@ -49,8 +49,8 @@
 		"register": {
 			"title": "Tạo tài khoản",
 			"description": "Nhập thông tin để tạo tài khoản mới",
-			"name": "Họ và tên",
-			"namePlaceholder": "Nguyễn Văn A",
+			"username": "Tên đăng nhập",
+			"usernamePlaceholder": "nguyen_van_a",
 			"email": "Email",
 			"emailPlaceholder": "user@example.com",
 			"password": "Mật khẩu",
@@ -62,12 +62,11 @@
 			"generalError": "Đã xảy ra lỗi. Vui lòng thử lại.",
 			"validation": {
 				"invalidEmail": "Địa chỉ email không hợp lệ",
-				"passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự",
+				"passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự",
 				"passwordsNotMatch": "Mật khẩu không khớp",
-				"nameRequired": "Họ và tên là bắt buộc",
-				"nameMinLength": "Tên phải có ít nhất 2 ký tự"
+				"usernameInvalid": "Tên đăng nhập gồm 3–30 ký tự: chữ, số hoặc dấu gạch dưới"
 			},
-			"emailExists": "Đã tồn tại tài khoản với email này",
+			"emailExists": "Đã tồn tại tài khoản với email hoặc tên đăng nhập này",
 			"successMessage": "Tạo tài khoản thành công! Đang chuyển hướng...",
 			"haveAccount": "Đã có tài khoản?",
 			"loginLink": "Đăng nhập tại đây"
