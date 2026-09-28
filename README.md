@@ -258,5 +258,5 @@ Defaults are what the code falls back to when a variable is unset; `.env.example
 
 - **Linter/Formatter**: Biome (API: single quotes, 2 spaces, 80 chars / Web: double quotes, tabs, 100 chars)
 - **Git hooks**: Husky pre-commit runs lint-staged (Biome) followed by the repository-wide Gitleaks scan (`./tools/bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits)
-- **CI**: GitHub Actions runs `pnpm nx affected -t lint typecheck test build` on push to main and PRs
+- **CI/CD** (git flow): CI runs `pnpm nx affected -t lint typecheck test build` on PRs and pushes to `develop`/`main`; `release/*` and `hotfix/*` deploy to staging, `v*` tags deploy to prod — see [`docs/infrastructure.md`](docs/infrastructure.md#cicd-pipeline)
 - **AI agents**: shared instructions in [`AGENTS.md`](AGENTS.md), scoped ones in `apps/api/`, `apps/web/`, and `infra/`; `CLAUDE.md` files import them

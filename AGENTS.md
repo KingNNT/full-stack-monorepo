@@ -79,8 +79,10 @@ mise run local:db-studio
   repo-wide Gitleaks scan (`./tools/bin/gitleaks detect --source . --redact`);
   commit-msg runs commitlint.
 - **Commits**: Conventional Commits (`feat(api): …`, `fix(web): …`).
-- **CI**: GitHub Actions runs `pnpm nx affected -t lint typecheck test build`
-  on push to main and on PRs.
+- **CI/CD** (git flow): CI (`pnpm nx affected -t lint typecheck test build`)
+  runs on PRs and pushes to `develop`/`main`; `release/*` and `hotfix/*`
+  deploy to staging, `v*` tags deploy to prod. Details in
+  [`docs/infrastructure.md`](docs/infrastructure.md#cicd-pipeline).
 
 ## Environment variables
 
