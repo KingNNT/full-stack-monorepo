@@ -52,9 +52,24 @@ pdb:
   enabled: false
   minAvailable: 1
 
+# Runs pending Drizzle migrations in an initContainer before the API starts.
+# Uses a Postgres advisory lock, so concurrent pods do not race.
+migrations:
+  enabled: true
+  command:
+    - node
+    - dist/src/shared/infrastructure/database/migrate.js
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
 readinessProbe:
   httpGet:
-    path: /v1/health
+    path: /v1/readiness
     port: http
   initialDelaySeconds: 10
   periodSeconds: 10

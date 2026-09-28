@@ -23,5 +23,6 @@ ingress:
 env:
   API_BASE_URL: http://api:8000
   AUTH_URL: https://example.com
+  APP_URL: https://example.com
 
 secrets: {}
