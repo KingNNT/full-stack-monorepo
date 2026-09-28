@@ -3,13 +3,24 @@ on:
   push:
     branches: [develop, main]
   pull_request:
+  # Deploy runs the full suite as a gate before building release images.
+  workflow_call:
+    inputs:
+      all-projects:
+        description: Run every project instead of only affected ones
+        type: boolean
+        default: false
+      docker-build:
+        description: Also check that the Docker images build
+        type: boolean
+        default: true
 
 permissions:
   actions: read
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.all-projects && 'all' || 'affected' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -44,14 +55,21 @@ jobs:
       # On push, compare against the last successful run on the pushed branch;
       # the action defaults to `main`, which does not exist in this repo.
       - uses: nrwl/nx-set-shas@v4
+        if: ${{ !inputs.all-projects }}
         with:
           main-branch-name: ${{ github.event_name == 'push' && github.ref_name || github.base_ref }}
 
-      - run: pnpm nx affected -t lint typecheck test build
+      - if: ${{ !inputs.all-projects }}
+        run: pnpm nx affected -t lint typecheck test build
+
+      - if: ${{ inputs.all-projects }}
+        run: pnpm nx run-many -t lint typecheck test build
 
   docker-build:
     runs-on: ubuntu-latest
     needs: main
+    # inputs are null outside workflow_call, and null == false in expressions.
+    if: ${{ format('{0}', inputs.docker-build) != 'false' }}
     strategy:
       matrix:
         app: [api, web]

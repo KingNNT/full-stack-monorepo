@@ -60,11 +60,10 @@ infra/
 │   ├── postgres/          # PostgreSQL for dev
 │   └── monitoring/        # Prometheus + Grafana + Loki + Tempo
 ├── codebuild/             # CodeBuild buildspec files
-│   ├── buildspec-terraform.yml
 │   ├── buildspec-helm-deploy.yml
 │   └── buildspec-smoke-test.yml
 └── scripts/
-    ├── deploy.sh          # Helm deployment wrapper
+    ├── deploy.sh          # dev: helm into kind; staging/prod: upload bundle + start pipeline
     ├── tf-plan.sh         # Terraform plan helper
     └── localstack-init.sh # Local dev environment setup
 ```
@@ -204,15 +203,17 @@ Injected into pods at deploy time via `helm --set secrets.XXX=...`
 CI/CD pipeline:
 
 ```
-ECR image push (trigger)
+deploy-bundle.zip uploaded to S3 + pipeline started (by GitHub Actions)
   → CodePipeline
-    → Stage 1: Terraform Apply (infra changes)
-    → Stage 2: Manual Approval (prod only)
-    → Stage 3: Helm Deploy (app deployment)
-    → Stage 4: Smoke Test (health check + auto-rollback)
+    → Source: s3://fullstack-monorepo-<env>-deploy-source/deploy-bundle.zip
+    → Manual Approval (prod only)
+    → Helm Deploy (cluster add-ons, api + web; api runs migrations in an initContainer)
+    → Smoke Test (in-cluster health checks + auto-rollback)
 ```
 
-CodeBuild projects run in VPC private subnets for RDS/EKS access.
+CodeBuild projects run in VPC private subnets for RDS/EKS access; the CodeBuild
+role has an EKS access entry (cluster admin) and a 443 rule to the cluster SG.
+Terraform is **not** applied by the pipeline — see [Applying infrastructure](#applying-infrastructure).
 
 ---
 
@@ -227,7 +228,7 @@ CodeBuild projects run in VPC private subnets for RDS/EKS access.
 | **RDS Backups** | 1 day | 7 days | 30 days |
 | **S3 Lifecycle** | 30 days | 90 days | 365 days |
 | **CloudFront** | No | Yes | Yes |
-| **CodePipeline** | No | Yes (auto-deploy) | Yes (manual approval) |
+| **CodePipeline** | No | Yes (`release/*`, `hotfix/*`) | Yes (`v*` tags, manual approval) |
 | **Secrets Manager** | No (env vars) | Yes | Yes |
 
 ---
@@ -299,48 +300,96 @@ Everything          → Grafana        → Dashboards + Explore
 
 ## CI/CD Pipeline
 
+### Git flow
+
+| Branch / ref | What runs |
+|---|---|
+| `feature/*`, `bugfix/*` → PR into `develop` | CI (`ci.yml`: affected lint, typecheck, test, build + Docker build check) |
+| push to `develop` / `main` | CI |
+| push to `release/*`, `hotfix/*` | Deploy to **staging** (`deploy.yml`) |
+| tag `v*` (cut on `main` after merging a release/hotfix) | Deploy to **prod** (`deploy.yml`, CodePipeline manual approval) |
+| PR touching `infra/terraform/**` | `infra-plan.yml`: fmt + validate for every env, `plan` for staging/prod when their plan role secret exists |
+
+`deploy.yml` can also be run by hand (`workflow_dispatch`); prod is only accepted on a `v*` tag.
+
 ### GitHub Actions → AWS
 
+Staging and prod are **separate AWS accounts**. Each is a GitHub Environment
+(`staging`, `prod`) holding `AWS_DEPLOY_ROLE_ARN`.
+
 ```
-Developer pushes code
-  → GitHub Actions workflow triggers
-  → OIDC authentication to AWS (no stored credentials)
-  → Docker build + push to ECR
-  → ECR push event triggers CodePipeline
+deploy.yml
+  → CI (full run-many) as a gate
+  → OIDC into the target account (sub = repo:<owner>/<repo>:environment:<env>)
+  → build + push api and web to that account's ECR as sha-<commit> (+ vX.Y.Z on tags)
+  → zip infra/helm + infra/codebuild + deploy.env (IMAGE_TAG, GIT_SHA, GIT_REF)
+  → upload to s3://fullstack-monorepo-<env>-deploy-source/deploy-bundle.zip
+  → start CodePipeline fullstack-monorepo-<env> and wait for the result
 ```
+
+The bundle carries the charts and buildspecs from the same commit as the images,
+so a deploy never mixes a new image with an old chart.
 
 ### CodePipeline Stages
 
 ```
-Stage 1: Terraform Apply
-  └── buildspec-terraform.yml
-  └── Updates infrastructure if changed
+Source: S3 deploy bundle
 
-Stage 2: Manual Approval (prod only)
-  └── Requires human confirmation
+Manual Approval (prod only)
 
-Stage 3: Helm Deploy
+Deploy
   └── buildspec-helm-deploy.yml
-  └── Fetches secrets from Secrets Manager
-  └── helm upgrade --install api + web
-  └── Waits for rollout (--wait --timeout 5m)
+  └── Pinned helm + kubectl (checksum-verified)
+  └── Installs/updates AWS Load Balancer Controller + metrics-server
+  └── Verifies both images exist in ECR
+  └── helm upgrade --install api + web with IMAGE_TAG from deploy.env
+  └── api initContainer runs DB migrations (advisory-locked)
 
-Stage 4: Smoke Test
+Smoke Test
   └── buildspec-smoke-test.yml
-  └── GET /v1/health → expect HTTP 200
+  └── In-cluster curl: api /v1/health, web /en/home
   └── On failure: helm rollback api + web
 ```
 
 ### Secrets Flow
 
 ```
-AWS Secrets Manager
-  → CodeBuild env (buildspec secrets-manager section)
-  → helm --set secrets.DATABASE_URL="${DATABASE_URL}"
-  �� Kubernetes Secret (base64 encoded)
-  → Pod envFrom secretRef
-  → process.env.DATABASE_URL in app
+AWS Secrets Manager (/<env>/api/*, /<env>/web/AUTH_SECRET)
+  → CodeBuild env vars (type SECRETS_MANAGER, set by Terraform)
+  → helm --set-literal secrets.XXX=...
+  → Kubernetes Secret
+  → Pod envFrom secretRef (app + migrate initContainer)
 ```
+
+### Applying infrastructure
+
+Terraform is applied manually, once per account, by an admin:
+
+1. Bootstrap state (per account, before the first `terraform init`):
+   ```bash
+   ENV=staging   # or prod
+   aws s3api create-bucket --bucket fullstack-monorepo-$ENV-tf-state \
+     --region ap-southeast-1 --create-bucket-configuration LocationConstraint=ap-southeast-1
+   aws s3api put-bucket-versioning --bucket fullstack-monorepo-$ENV-tf-state \
+     --versioning-configuration Status=Enabled
+   aws dynamodb create-table --table-name fullstack-monorepo-$ENV-tf-lock \
+     --attribute-definitions AttributeName=LockID,AttributeType=S \
+     --key-schema AttributeName=LockID,KeyType=HASH --billing-mode PAY_PER_REQUEST \
+     --region ap-southeast-1
+   ```
+2. Set real domains (`domain_name`: prod `<domain>`, staging `staging.<domain>`), then
+   `terraform -chdir=infra/terraform/envs/$ENV init && terraform -chdir=infra/terraform/envs/$ENV apply`.
+   ACM waits for DNS validation, so delegate the zones (registrar → prod zone,
+   NS record for `staging.<domain>` in the prod zone → staging zone) while it runs.
+3. Replace the `CHANGE_ME` values of `/<env>/api/DATABASE_URL`,
+   `/<env>/api/JWT_ACCESS_SECRET`, `/<env>/api/JWT_REFRESH_SECRET`,
+   `/<env>/web/AUTH_SECRET`. Build `DATABASE_URL` from the RDS endpoint and the
+   RDS-managed master secret, with `?sslmode=require`.
+4. In GitHub: Environment secret `AWS_DEPLOY_ROLE_ARN` = output
+   `github_deploy_role_arn` (per environment), and repo secrets
+   `STAGING_PLAN_ROLE_ARN` / `PROD_PLAN_ROLE_ARN` = output `github_plan_role_arn`.
+   Add required reviewers to the `prod` environment if you want a GitHub-side gate too.
+5. Prod CloudFront stays disabled until `web_origin_domain_name` is set to the web ALB hostname.
 
 ---
 

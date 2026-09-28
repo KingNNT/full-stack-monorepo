@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-#MISE description="Deploy all services to staging"
+#MISE description="Deploy IMAGE_TAG=sha-<commit> to staging via CodePipeline (needs staging AWS credentials)"
 set -euo pipefail
 bash infra/scripts/deploy.sh staging all
