@@ -1,12 +1,15 @@
 # AGENTS.md
 
-Instructions for AI coding agents working in this repository.
+Instructions for AI coding agents (Claude Code, Codex, Antigravity, opencode,
+Cursor, Copilot, …) working in this repository. This file is the single source
+of truth; harness-specific files (`CLAUDE.md`, …) only import or extend it.
 
 ## What this is
 
 An Nx monorepo: a NestJS 11 API (`apps/api`, port 8000) and a Next.js 16 web app
 (`apps/web`, port 3000), sharing PostgreSQL 16 via Drizzle ORM. Toolchain
-versions and task shortcuts are managed by [mise](https://mise.jdx.dev).
+versions (Node LTS, pnpm), env vars, and task shortcuts are managed by
+[mise](https://mise.jdx.dev) (`mise.toml`).
 
 ## Hard rules
 
@@ -15,54 +18,75 @@ versions and task shortcuts are managed by [mise](https://mise.jdx.dev).
 3. **Never commit, push, or create branches** unless the user explicitly asks.
 4. **Never run `mise run local:docker-clean`** — it destroys database volumes.
 
+## Scoped instructions — read before editing
+
+Each area has its own `AGENTS.md`. Before changing files under one of these
+paths, read that file (and the detail docs it links) if your tool has not
+already loaded it:
+
+| Path | Instructions |
+|---|---|
+| `apps/api/` | [`apps/api/AGENTS.md`](apps/api/AGENTS.md) — DDD/CQRS, Jest, Drizzle |
+| `apps/web/` | [`apps/web/AGENTS.md`](apps/web/AGENTS.md) — App Router, next-intl, Vitest/Playwright |
+| `infra/`, `mise/tasks/{dev,staging,prod}/` | [`infra/AGENTS.md`](infra/AGENTS.md) — Terraform, Helm, monitoring |
+
 ## Installing
 
-**New project from this template** — from the directory that should contain it:
+Follow [`docs/AGENT_INSTALL.md`](docs/AGENT_INSTALL.md) — it covers scaffolding
+a new project from this template, setting up an existing clone, the smoke test,
+and the checklist you must satisfy before reporting success.
+
+## Common commands
 
 ```bash
-PROJECT_NAME=my-app \
-GIT_USER_NAME="John Doe" \
-GIT_USER_EMAIL=john@example.com \
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
+pnpm dev                 # both apps in watch mode (dev:api / dev:web for one)
+pnpm build | lint | typecheck | test     # all apps via Nx
+pnpm nx run <api|web>:<target>           # single app, e.g. pnpm nx run api:test
+pnpm nx affected -t lint typecheck test build   # what CI runs
 ```
 
-Ask the user for those three values; do not invent them. Use `bash -c "$(curl ...)"`,
-not `curl ... | bash` — a pipe occupies stdin.
-
-**Existing clone** — from the repo root:
+Tasks are namespaced by environment: `local:*` (dev machine — apps, db,
+docker), `dev:*` (kind/LocalStack cluster), `staging:*` and `prod:*` (helm
+deploys). Task files live in `mise/tasks/<env>/` as executable bash scripts
+with a `#MISE description="…"` header; `mise tasks ls` lists them.
+Short aliases: `mise run dev | lint | test | typecheck`.
 
 ```bash
-mise trust ./mise.toml && mise install
-eval "$(mise activate bash --shims)"     # node/pnpm are not on PATH without this
-pnpm install
-[ -f .env ] || cp .env.example .env      # then fill JWT_*/AUTH_SECRET with `openssl rand -base64 48`
-mise run local:docker-up-api             # first run builds the API image — several minutes
+mise run local:docker-up-api     # postgres + api containers
+mise run local:docker-up         # api + web + postgres
+mise run local:docker-down       # stop all
+mise run local:docker-logs       # tail logs
+mise run local:db-generate       # migrations from schema changes
 mise run local:db-migrate
-mise run local:db-seed                   # registers users through the API, so it must be up
+mise run local:db-seed           # RBAC roles/permissions + default users (API must be up)
+mise run local:db-studio
 ```
 
-Then verify the stack actually runs. The api container from `local:docker-up-api`
-already holds port 8000, so do **not** start `mise run dev` — check that API, and
-background only the web dev server:
+## Layout
 
-```bash
-# bash only — `set -m` and `kill -- -PID` are bash job control
-curl -fsS http://localhost:8000/v1/health | grep -q '"status":"ok"' && echo "API OK"
-set -m; pnpm dev:web > /tmp/dev-web.log 2>&1 & WEB_PID=$!; set +m
-for i in $(seq 1 30); do curl -sI http://localhost:3000 >/dev/null 2>&1 && break; sleep 2; done
-curl -sI http://localhost:3000 | head -1              # expect 307, or any 2xx/3xx
-kill -- "-$WEB_PID" 2>/dev/null || kill "$WEB_PID"   # kill the group, not just the wrapper
-sleep 3
-lsof -i :3000 -sTCP:LISTEN >/dev/null 2>&1 && echo "port 3000 STILL HELD" || echo "port 3000 free"
-```
+- `apps/api` — NestJS 11 backend
+- `apps/web` — Next.js 16 frontend
+- `packages/` — shared libraries (empty, ready for extraction)
+- `infra/` — Terraform, Helm charts, CodeBuild specs
+- `mise/tasks/` — task scripts per environment
+- `docs/` — install runbook, infrastructure, DB diagram, brand
 
-The health path is `/v1/health`, not `/health` (URI versioning applies), and the
-body is wrapped: `{"status_code":200,"success":true,"message":"OK","data":{"status":"ok"}}`.
+## Tooling
 
-Full runbook — per-step verification, troubleshooting, and the completion
-checklist you must satisfy before reporting success: **[`docs/AGENT_INSTALL.md`](docs/AGENT_INSTALL.md)**.
+- **Biome**, not ESLint/Prettier. Each app has its own `biome.json` with a
+  different style — see the app's `AGENTS.md`.
+- **Git hooks**: Husky pre-commit runs lint-staged (Biome check) then the
+  repo-wide Gitleaks scan (`./tools/bin/gitleaks detect --source . --redact`);
+  commit-msg runs commitlint.
+- **Commits**: Conventional Commits (`feat(api): …`, `fix(web): …`).
+- **CI**: GitHub Actions runs `pnpm nx affected -t lint typecheck test build`
+  on push to main and on PRs.
 
-## Writing code here
+## Environment variables
 
-Architecture, module layout, testing commands, and conventions live in
-[`CLAUDE.md`](CLAUDE.md). Read it before changing any code.
+mise loads the root `.env` (template: `.env.example`), shared by all apps. For
+personal overrides create `mise.local.toml` with `_.file = ".env.local"`
+(gitignored). Key variables:
+
+- API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `API_PORT`
+- Web: `AUTH_SECRET`, `API_BASE_URL`, `AUTH_URL`

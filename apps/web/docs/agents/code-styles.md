@@ -6,10 +6,6 @@ paths:
 
 # Web Code Styles
 
-## Package Manager
-
-- **pnpm only** — never use npm, npx, or yarn. Use `pnpm` / `pnpm exec` / `pnpm dlx` instead.
-
 ## Formatting
 
 - Double quotes, tab indentation, 100-char line width (see `apps/web/biome.json`)
