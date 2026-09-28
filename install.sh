@@ -157,6 +157,11 @@ rename_project() {
     [ -z "$file" ] && continue
     local filepath="$INSTALL_DIR/$file"
 
+    # Tracked symlinks (e.g. .claude/rules/api -> a directory) must not be
+    # edited: sed -i fails on a directory and would replace a file link with a
+    # regular copy. Their targets are tracked and renamed on their own.
+    [ -L "$filepath" ] && continue
+
     # Order matters: more specific patterns first
     sed -i.bak \
       -e "s|@fullstack-monorepo-app/|@${PROJECT_NAME}/|g" \
