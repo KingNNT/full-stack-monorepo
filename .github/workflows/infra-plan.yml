@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "infra/terraform/**"
+      - ".github/workflows/infra-plan.yml"
 
 permissions:
   id-token: write
@@ -18,9 +19,13 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         environment: [dev, staging, prod]
     name: Plan (${{ matrix.environment }})
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/${{ matrix.environment }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,48 +35,69 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
 
+      - name: Terraform Format
+        run: terraform fmt -check -recursive ../..
+
+      # dev targets LocalStack, and staging/prod need an AWS role; without them
+      # only offline validation is possible, so validate every env first.
+      - name: Terraform Validate
+        run: |
+          terraform init -input=false -backend=false
+          terraform validate
+
+      - name: Check AWS credentials
+        id: creds
+        env:
+          ROLE_ARN: ${{ secrets[format('{0}_DEPLOY_ROLE_ARN', matrix.environment)] }}
+        run: |
+          if [[ "${{ matrix.environment }}" != "dev" && -n "$ROLE_ARN" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping plan for ${{ matrix.environment }}: dev runs against LocalStack, or the ${{ matrix.environment }}_DEPLOY_ROLE_ARN secret is not set."
+          fi
+
       - name: Configure AWS credentials
-        if: matrix.environment != 'dev'
+        if: steps.creds.outputs.available == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets[format('{0}_DEPLOY_ROLE_ARN', matrix.environment)] }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform Init
-        working-directory: infra/terraform/envs/${{ matrix.environment }}
-        run: terraform init -input=false
-
-      - name: Terraform Validate
-        working-directory: infra/terraform/envs/${{ matrix.environment }}
-        run: terraform validate
-
       - name: Terraform Plan
         id: plan
-        working-directory: infra/terraform/envs/${{ matrix.environment }}
+        if: steps.creds.outputs.available == 'true'
         run: |
+          set -o pipefail
+          terraform init -input=false -reconfigure
           terraform plan -input=false -no-color -out=tfplan 2>&1 | tee plan.txt
-          echo "plan<<PLAN_EOF" >> "$GITHUB_OUTPUT"
-          cat plan.txt >> "$GITHUB_OUTPUT"
-          echo "PLAN_EOF" >> "$GITHUB_OUTPUT"
         continue-on-error: true
 
+      # PR comments cap at 65,536 characters; keep the tail, where errors and
+      # the change summary are.
+      - name: Prepare comment
+        if: steps.creds.outputs.available == 'true'
+        run: |
+          {
+            echo "### Terraform Plan — \`${{ matrix.environment }}\`"
+            echo
+            echo "<details><summary>Show plan</summary>"
+            echo
+            echo '```'
+            tail -c 60000 plan.txt
+            echo '```'
+            echo
+            echo "</details>"
+            echo
+            echo "**Result:** ${{ steps.plan.outcome == 'success' && '✅ Success' || '❌ Failed' }}"
+          } > comment.md
+
       - name: Comment PR
+        if: steps.creds.outputs.available == 'true'
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ### Terraform Plan — `${{ matrix.environment }}`
-
-            <details>
-            <summary>Show plan</summary>
-
-            ```
-            ${{ steps.plan.outputs.plan }}
-            ```
-
-            </details>
-
-            **Result:** ${{ steps.plan.outcome == 'success' && '✅ Success' || '❌ Failed' }}
+          body-path: infra/terraform/envs/${{ matrix.environment }}/comment.md
 
       - name: Fail on plan error
         if: steps.plan.outcome == 'failure'
