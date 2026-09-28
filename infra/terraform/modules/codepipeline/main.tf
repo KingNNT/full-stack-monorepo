@@ -15,6 +15,66 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
   }
 }
 
+resource "aws_s3_bucket_public_access_block" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# --- S3 Deploy Source Bucket (GitHub Actions uploads deploy-bundle.zip) ---
+resource "aws_s3_bucket" "deploy_source" {
+  bucket        = "${var.project_name}-${var.environment}-deploy-source"
+  force_destroy = true
+  tags          = var.tags
+}
+
+resource "aws_s3_bucket_versioning" "deploy_source" {
+  bucket = aws_s3_bucket.deploy_source.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "deploy_source" {
+  bucket = aws_s3_bucket.deploy_source.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "deploy_source" {
+  bucket = aws_s3_bucket.deploy_source.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "deploy_source" {
+  bucket = aws_s3_bucket.deploy_source.id
+
+  rule {
+    id     = "expire-old-bundle-versions"
+    status = "Enabled"
+
+    filter {}
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.deploy_source_noncurrent_days
+    }
+  }
+
+  depends_on = [aws_s3_bucket_versioning.deploy_source]
+}
+
 # --- IAM Role for CodePipeline ---
 data "aws_iam_policy_document" "pipeline_assume" {
   statement {
@@ -47,21 +107,21 @@ data "aws_iam_policy_document" "pipeline_policy" {
 
   statement {
     actions = [
-      "codebuild:BatchGetBuilds",
-      "codebuild:StartBuild",
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:GetBucketVersioning",
     ]
-    resources = ["*"]
+    resources = [
+      aws_s3_bucket.deploy_source.arn,
+      "${aws_s3_bucket.deploy_source.arn}/*",
+    ]
   }
 
   statement {
     actions = [
-      "ecr:DescribeImages",
+      "codebuild:BatchGetBuilds",
+      "codebuild:StartBuild",
     ]
-    resources = ["*"]
-  }
-
-  statement {
-    actions   = ["codestar-connections:UseConnection"]
     resources = ["*"]
   }
 
@@ -86,60 +146,21 @@ resource "aws_sns_topic" "pipeline_notifications" {
   tags = var.tags
 }
 
-# --- EventBridge Rule: ECR Push → Pipeline ---
-resource "aws_cloudwatch_event_rule" "ecr_push" {
-  name        = "${var.project_name}-${var.environment}-ecr-push"
-  description = "Trigger pipeline on ECR image push"
-
-  event_pattern = jsonencode({
-    source      = ["aws.ecr"]
-    detail-type = ["ECR Image Action"]
-    detail = {
-      action-type     = ["PUSH"]
-      result          = ["SUCCESS"]
-      repository-name = var.ecr_repository_names
-      image-tag       = [{ prefix = "sha-" }]
-    }
-  })
-
-  tags = var.tags
-}
-
-resource "aws_cloudwatch_event_target" "pipeline" {
-  rule      = aws_cloudwatch_event_rule.ecr_push.name
-  target_id = "codepipeline"
-  arn       = aws_codepipeline.this.arn
-  role_arn  = aws_iam_role.eventbridge.arn
-}
-
-# --- EventBridge IAM Role ---
-data "aws_iam_policy_document" "eventbridge_assume" {
+data "aws_iam_policy_document" "pipeline_notifications" {
   statement {
-    actions = ["sts:AssumeRole"]
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.pipeline_notifications.arn]
+
     principals {
       type        = "Service"
-      identifiers = ["events.amazonaws.com"]
+      identifiers = ["codestar-notifications.amazonaws.com"]
     }
   }
 }
 
-resource "aws_iam_role" "eventbridge" {
-  name               = "${var.project_name}-${var.environment}-eventbridge-pipeline"
-  assume_role_policy = data.aws_iam_policy_document.eventbridge_assume.json
-  tags               = var.tags
-}
-
-data "aws_iam_policy_document" "eventbridge_policy" {
-  statement {
-    actions   = ["codepipeline:StartPipelineExecution"]
-    resources = [aws_codepipeline.this.arn]
-  }
-}
-
-resource "aws_iam_role_policy" "eventbridge" {
-  name   = "${var.project_name}-${var.environment}-eventbridge-pipeline"
-  role   = aws_iam_role.eventbridge.id
-  policy = data.aws_iam_policy_document.eventbridge_policy.json
+resource "aws_sns_topic_policy" "pipeline_notifications" {
+  arn    = aws_sns_topic.pipeline_notifications.arn
+  policy = data.aws_iam_policy_document.pipeline_notifications.json
 }
 
 # --- CodePipeline ---
@@ -152,7 +173,7 @@ resource "aws_codepipeline" "this" {
     type     = "S3"
   }
 
-  # Source: GitHub (for buildspec files)
+  # Source: deploy bundle uploaded by GitHub Actions, which also starts the pipeline
   stage {
     name = "Source"
 
@@ -160,37 +181,19 @@ resource "aws_codepipeline" "this" {
       name             = "Source"
       category         = "Source"
       owner            = "AWS"
-      provider         = "CodeStarSourceConnection"
+      provider         = "S3"
       version          = "1"
       output_artifacts = ["source_output"]
 
       configuration = {
-        ConnectionArn    = "" # Set after creating CodeStar connection
-        FullRepositoryId = var.source_repo
-        BranchName       = var.source_branch
+        S3Bucket             = aws_s3_bucket.deploy_source.id
+        S3ObjectKey          = var.deploy_source_object_key
+        PollForSourceChanges = "false"
       }
     }
   }
 
-  # Stage 1: Terraform Apply
-  stage {
-    name = "Terraform"
-
-    action {
-      name            = "TerraformApply"
-      category        = "Build"
-      owner           = "AWS"
-      provider        = "CodeBuild"
-      version         = "1"
-      input_artifacts = ["source_output"]
-
-      configuration = {
-        ProjectName = var.codebuild_terraform_project
-      }
-    }
-  }
-
-  # Stage 2: Manual Approval (prod only)
+  # Manual Approval (prod only)
   dynamic "stage" {
     for_each = var.require_approval ? [1] : []
     content {
@@ -203,15 +206,15 @@ resource "aws_codepipeline" "this" {
         provider = "Manual"
         version  = "1"
 
-        configuration = {
-          NotificationArn = var.approval_sns_topic_arn
-          CustomData      = "Approve deployment to ${var.environment}?"
-        }
+        configuration = merge(
+          { CustomData = "Approve deployment to ${var.environment}?" },
+          var.approval_sns_topic_arn != "" ? { NotificationArn = var.approval_sns_topic_arn } : {},
+        )
       }
     }
   }
 
-  # Stage 3: Helm Deploy
+  # Helm Deploy
   stage {
     name = "Deploy"
 
@@ -229,7 +232,7 @@ resource "aws_codepipeline" "this" {
     }
   }
 
-  # Stage 4: Smoke Test
+  # Smoke Test
   stage {
     name = "SmokeTest"
 
@@ -248,6 +251,8 @@ resource "aws_codepipeline" "this" {
   }
 
   tags = var.tags
+
+  depends_on = [aws_s3_bucket_versioning.deploy_source]
 }
 
 # --- Pipeline Notification Rule ---
@@ -267,4 +272,6 @@ resource "aws_codestarnotifications_notification_rule" "pipeline" {
   }
 
   tags = var.tags
+
+  depends_on = [aws_sns_topic_policy.pipeline_notifications]
 }

@@ -21,3 +21,9 @@ variable "domain_name" {
   type        = string
   default     = "example.com"
 }
+
+variable "web_origin_domain_name" {
+  description = "Web ALB hostname used as the CloudFront origin (empty disables CloudFront)"
+  type        = string
+  default     = ""
+}
