@@ -98,3 +98,22 @@ ENV
   [[ "$output" == *"my_saas_dev"* ]]
   [[ "$output" != *"fullstack_monorepo_dev"* ]]
 }
+
+@test "rename_project: skips tracked symlinks and leaves them intact" {
+  mkdir -p "$WORK_DIR/docs/agents" "$WORK_DIR/.claude/rules"
+  echo "fullstack-monorepo docs" > "$WORK_DIR/docs/agents/api.md"
+  ln -s ../../docs/agents "$WORK_DIR/.claude/rules/api"
+  ln -s ../../docs/agents/api.md "$WORK_DIR/.claude/rules/api.md"
+
+  cd "$WORK_DIR" && git init && git add -A && git commit -m "init" --quiet 2>/dev/null
+
+  run bash -c "source '$INSTALL_SH'; INSTALL_DIR='$WORK_DIR'; PROJECT_NAME='my-saas'; rename_project"
+  [ "$status" -eq 0 ]
+
+  [ -L "$WORK_DIR/.claude/rules/api" ]
+  [ -L "$WORK_DIR/.claude/rules/api.md" ]
+  [ "$(readlink "$WORK_DIR/.claude/rules/api.md")" = "../../docs/agents/api.md" ]
+
+  run cat "$WORK_DIR/docs/agents/api.md"
+  [ "$output" = "my-saas docs" ]
+}
