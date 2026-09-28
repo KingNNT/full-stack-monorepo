@@ -18,17 +18,17 @@ Nx monorepo with a NestJS API backend and Next.js web frontend.
 One-liner for a fresh macOS or Linux machine (installs mise, then Node LTS + pnpm via `mise install`, clones the repo, copies `.env`, runs `pnpm install`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
 ```
 
 Optional overrides:
 
 ```bash
 INSTALL_DIR=~/code/monorepo BRANCH=main USE_HTTPS=1 \
-  curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
 ```
 
-Always inspect the script before piping to bash:
+Always inspect the script before running it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | less
@@ -36,8 +36,22 @@ curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop
 
 ### Install with an AI agent
 
-`install.sh` skips its prompts when the three values are supplied as environment
-variables, so an agent can run it unattended:
+Paste this into Claude Code, Codex, Cursor, or any agent that can fetch URLs and
+run shell commands, from the directory that should contain the project:
+
+```
+Install this project by following
+https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/docs/AGENT_INSTALL.md
+PROJECT_NAME=my-app, GIT_USER_NAME="John Doe", GIT_USER_EMAIL=john@example.com
+```
+
+Already cloned? Open the agent at the repo root and say:
+`Set up this repo following AGENTS.md and docs/AGENT_INSTALL.md.`
+
+The agent scaffolds the project, starts PostgreSQL + API, migrates, seeds, and
+smoke-tests both apps before reporting success. Under the hood it runs
+`install.sh` unattended — the script skips its prompts when all three values are
+supplied as environment variables:
 
 ```bash
 PROJECT_NAME=my-app \
