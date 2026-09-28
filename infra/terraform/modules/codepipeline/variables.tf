@@ -8,16 +8,6 @@ variable "environment" {
   type        = string
 }
 
-variable "ecr_repository_names" {
-  description = "ECR repository names that trigger the pipeline"
-  type        = list(string)
-}
-
-variable "codebuild_terraform_project" {
-  description = "CodeBuild project name for Terraform apply"
-  type        = string
-}
-
 variable "codebuild_helm_deploy_project" {
   description = "CodeBuild project name for Helm deploy"
   type        = string
@@ -40,22 +30,16 @@ variable "approval_sns_topic_arn" {
   default     = ""
 }
 
-variable "notification_sns_topic_arn" {
-  description = "SNS topic ARN for pipeline notifications"
+variable "deploy_source_object_key" {
+  description = "S3 object key of the deploy bundle uploaded by GitHub Actions"
   type        = string
-  default     = ""
+  default     = "deploy-bundle.zip"
 }
 
-variable "source_repo" {
-  description = "GitHub repository (owner/repo format)"
-  type        = string
-  default     = "fullstack-monorepos"
-}
-
-variable "source_branch" {
-  description = "Source branch"
-  type        = string
-  default     = "main"
+variable "deploy_source_noncurrent_days" {
+  description = "Days to keep noncurrent versions of the deploy bundle"
+  type        = number
+  default     = 30
 }
 
 variable "tags" {

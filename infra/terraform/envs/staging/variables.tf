@@ -17,7 +17,7 @@ variable "environment" {
 }
 
 variable "domain_name" {
-  description = "Domain name"
+  description = "Domain name (staging uses its own subdomain, delegated from the prod zone)"
   type        = string
-  default     = "example.com"
+  default     = "staging.example.com"
 }

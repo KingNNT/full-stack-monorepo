@@ -3,6 +3,11 @@ output "github_deploy_role_arn" {
   value       = aws_iam_role.github_deploy.arn
 }
 
+output "github_plan_role_arn" {
+  description = "GitHub Actions Terraform plan role ARN (empty when disabled)"
+  value       = length(aws_iam_role.github_plan) > 0 ? aws_iam_role.github_plan[0].arn : ""
+}
+
 output "app_pod_role_arn" {
   description = "App pod IRSA role ARN"
   value       = length(aws_iam_role.app_pod) > 0 ? aws_iam_role.app_pod[0].arn : ""

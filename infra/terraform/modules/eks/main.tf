@@ -46,6 +46,8 @@ module "eks" {
     }
   }
 
+  # Access entries (used for the CodeBuild deploy role) require API or API_AND_CONFIG_MAP
+  authentication_mode                      = "API_AND_CONFIG_MAP"
   enable_cluster_creator_admin_permissions = true
 
   tags = var.tags

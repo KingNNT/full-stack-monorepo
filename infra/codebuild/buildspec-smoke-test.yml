@@ -1,36 +1,47 @@
 version: 0.2
 
+# Checks the release from inside the cluster (CodeBuild cannot route to
+# ClusterIPs, and the public ALB depends on DNS), then rolls both releases back
+# on failure.
+
+env:
+  shell: bash
+  variables:
+    KUBECTL_VERSION: "v1.31.14"
+    HELM_VERSION: "v3.22.0"
+
 phases:
   install:
     commands:
-      - echo "==> Installing tools..."
-      - curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION
+      - curl -fsSLo /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+      - echo "$(curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum" | cut -d' ' -f1)  /tmp/helm.tgz" | sha256sum -c -
+      - tar -xzf /tmp/helm.tgz -C /tmp && install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm
+      - curl -fsSLo /tmp/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+      - echo "$(curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256")  /tmp/kubectl" | sha256sum -c -
+      - install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+      - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_DEFAULT_REGION"
   build:
     commands:
       - echo "==> Running smoke tests for $ENVIRONMENT..."
       - |
-        API_URL=$(kubectl get ingress -n ${ENVIRONMENT} api \
-          -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+        set -o pipefail
+        check() {
+          local name="$1" url="$2" expect="$3"
+          kubectl -n "$ENVIRONMENT" run "smoke-${name}-${CODEBUILD_BUILD_NUMBER}" \
+            --rm -i --restart=Never --quiet \
+            --image=curlimages/curl:8.11.1 \
+            --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":100}}}' \
+            -- curl -fsS --max-time 15 --retry 5 --retry-delay 5 --retry-all-errors "$url" \
+            | tee "/tmp/${name}.out"
+          grep -q "$expect" "/tmp/${name}.out"
+        }
 
-        if [ -z "$API_URL" ]; then
-          echo "WARNING: Could not determine API URL from ingress, trying service..."
-          API_URL=$(kubectl get svc -n ${ENVIRONMENT} api \
-            -o jsonpath='{.spec.clusterIP}'):8000
-        fi
-
-        echo "Testing API at: $API_URL"
-        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${API_URL}/v1/health" --max-time 15 || echo "000")
-
-        if [ "$STATUS" != "200" ]; then
-          echo "ERROR: API health check failed (HTTP $STATUS)"
-          echo "==> Rolling back..."
-          helm rollback api -n ${ENVIRONMENT} || true
-          helm rollback web -n ${ENVIRONMENT} || true
+        if check api "http://api:8000/v1/health" '"status":"ok"' \
+          && check web "http://web:3000/en/home" '<html'; then
+          echo "Smoke tests passed"
+        else
+          echo "ERROR: smoke tests failed, rolling back..."
+          helm rollback api -n "$ENVIRONMENT" --wait || true
+          helm rollback web -n "$ENVIRONMENT" --wait || true
           exit 1
         fi
-
-        echo "API health check passed (HTTP $STATUS)"
-  post_build:
-    commands:
-      - echo "==> Smoke tests passed for $ENVIRONMENT"

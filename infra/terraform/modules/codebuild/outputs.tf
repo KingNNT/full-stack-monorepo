@@ -1,8 +1,3 @@
-output "terraform_apply_project_name" {
-  description = "CodeBuild project name for Terraform apply"
-  value       = aws_codebuild_project.terraform_apply.name
-}
-
 output "helm_deploy_project_name" {
   description = "CodeBuild project name for Helm deploy"
   value       = aws_codebuild_project.helm_deploy.name

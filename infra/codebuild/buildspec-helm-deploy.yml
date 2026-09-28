@@ -1,52 +1,88 @@
 version: 0.2
 
+# Runs from the deploy bundle uploaded by .github/workflows/deploy.yml.
+# CodeBuild provides ENVIRONMENT, EKS_CLUSTER_NAME, AWS_DEFAULT_REGION, VPC_ID,
+# LB_CONTROLLER_ROLE_ARN, and (from Secrets Manager) DATABASE_URL,
+# JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, AUTH_SECRET.
+
 env:
-  secrets-manager:
-    DATABASE_URL: "${ENVIRONMENT}/api/DATABASE_URL"
-    JWT_ACCESS_SECRET: "${ENVIRONMENT}/api/JWT_ACCESS_SECRET"
-    JWT_REFRESH_SECRET: "${ENVIRONMENT}/api/JWT_REFRESH_SECRET"
-    AUTH_SECRET: "${ENVIRONMENT}/web/AUTH_SECRET"
+  shell: bash
+  variables:
+    HELM_VERSION: "v3.22.0"
+    KUBECTL_VERSION: "v1.31.14"
+    LB_CONTROLLER_CHART_VERSION: "3.5.0"
+    METRICS_SERVER_CHART_VERSION: "3.14.0"
 
 phases:
   install:
     commands:
-      - echo "==> Installing Helm..."
-      - curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      - echo "==> Updating kubeconfig..."
-      - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION
+      - echo "==> Installing helm ${HELM_VERSION} and kubectl ${KUBECTL_VERSION}..."
+      - curl -fsSLo /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+      - echo "$(curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum" | cut -d' ' -f1)  /tmp/helm.tgz" | sha256sum -c -
+      - tar -xzf /tmp/helm.tgz -C /tmp && install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm
+      - curl -fsSLo /tmp/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+      - echo "$(curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256")  /tmp/kubectl" | sha256sum -c -
+      - install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+      - aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_DEFAULT_REGION"
   pre_build:
     commands:
-      - echo "==> Getting ECR registry..."
+      - test -f deploy.env || { echo "deploy.env missing from the deploy bundle"; exit 1; }
+      - set -a && . ./deploy.env && set +a
+      - test -n "${IMAGE_TAG:-}" || { echo "IMAGE_TAG not set in deploy.env"; exit 1; }
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
-      - IMAGE_TAG="${IMAGE_TAG:-latest}"
-      - echo "Deploying with image tag $IMAGE_TAG"
+      - |
+        for app in api web; do
+          aws ecr describe-images --repository-name "fullstack-monorepo/${app}" \
+            --image-ids imageTag="$IMAGE_TAG" >/dev/null \
+            || { echo "Image fullstack-monorepo/${app}:${IMAGE_TAG} not found in ECR"; exit 1; }
+        done
+      - echo "Deploying ${GIT_REF:-unknown} (${GIT_SHA:-unknown}) as ${IMAGE_TAG} to ${ENVIRONMENT}"
   build:
     commands:
+      - echo "==> Cluster add-ons (AWS Load Balancer Controller, metrics-server)..."
+      - helm repo add eks https://aws.github.io/eks-charts --force-update
+      - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ --force-update
+      - |
+        helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+          --version "$LB_CONTROLLER_CHART_VERSION" \
+          --namespace kube-system \
+          --set clusterName="$EKS_CLUSTER_NAME" \
+          --set region="$AWS_DEFAULT_REGION" \
+          --set vpcId="$VPC_ID" \
+          --set serviceAccount.create=true \
+          --set serviceAccount.name=aws-load-balancer-controller \
+          --set-string "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${LB_CONTROLLER_ROLE_ARN}" \
+          --wait --timeout 5m
+      - |
+        helm upgrade --install metrics-server metrics-server/metrics-server \
+          --version "$METRICS_SERVER_CHART_VERSION" \
+          --namespace kube-system \
+          --wait --timeout 5m
       - echo "==> Deploying API to $ENVIRONMENT..."
       - |
         helm upgrade --install api infra/helm/api \
-          -f infra/helm/api/values-${ENVIRONMENT}.yaml \
-          --set image.repository=${ECR_REGISTRY}/fullstack-monorepo/api \
-          --set image.tag=${IMAGE_TAG} \
-          --set secrets.DATABASE_URL="${DATABASE_URL}" \
-          --set secrets.JWT_ACCESS_SECRET="${JWT_ACCESS_SECRET}" \
-          --set secrets.JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}" \
-          --namespace ${ENVIRONMENT} \
+          -f "infra/helm/api/values-${ENVIRONMENT}.yaml" \
+          --set image.repository="${ECR_REGISTRY}/fullstack-monorepo/api" \
+          --set-string image.tag="${IMAGE_TAG}" \
+          --set-literal secrets.DATABASE_URL="${DATABASE_URL}" \
+          --set-literal secrets.JWT_ACCESS_SECRET="${JWT_ACCESS_SECRET}" \
+          --set-literal secrets.JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}" \
+          --namespace "$ENVIRONMENT" \
           --create-namespace \
           --history-max 5 \
-          --wait --timeout 5m
+          --wait --timeout 10m
       - echo "==> Deploying Web to $ENVIRONMENT..."
       - |
         helm upgrade --install web infra/helm/web \
-          -f infra/helm/web/values-${ENVIRONMENT}.yaml \
-          --set image.repository=${ECR_REGISTRY}/fullstack-monorepo/web \
-          --set image.tag=${IMAGE_TAG} \
-          --set secrets.AUTH_SECRET="${AUTH_SECRET}" \
-          --namespace ${ENVIRONMENT} \
+          -f "infra/helm/web/values-${ENVIRONMENT}.yaml" \
+          --set image.repository="${ECR_REGISTRY}/fullstack-monorepo/web" \
+          --set-string image.tag="${IMAGE_TAG}" \
+          --set-literal secrets.AUTH_SECRET="${AUTH_SECRET}" \
+          --namespace "$ENVIRONMENT" \
           --create-namespace \
           --history-max 5 \
           --wait --timeout 5m
   post_build:
     commands:
-      - echo "==> Helm deploy complete for $ENVIRONMENT"
+      - echo "==> Helm deploy finished for $ENVIRONMENT (build succeeded = ${CODEBUILD_BUILD_SUCCEEDING})"

@@ -34,22 +34,20 @@ variable "secret_arns" {
   default     = []
 }
 
-variable "terraform_state_bucket" {
-  description = "S3 bucket for Terraform state"
+variable "eks_cluster_security_group_id" {
+  description = "EKS cluster security group ID (CodeBuild is allowed 443 ingress to the API endpoint)"
   type        = string
-  default     = "fullstack-monorepo-tf-state"
 }
 
-variable "terraform_lock_table" {
-  description = "DynamoDB table for Terraform lock"
+variable "lb_controller_role_arn" {
+  description = "IAM role ARN for the AWS Load Balancer Controller service account"
   type        = string
-  default     = "fullstack-monorepo-tf-lock"
 }
 
-variable "source_repo_url" {
-  description = "Source repository URL for buildspec files"
-  type        = string
-  default     = ""
+variable "secret_env_vars" {
+  description = "Helm deploy env vars resolved from Secrets Manager (env var name => secret name or ARN)"
+  type        = map(string)
+  default     = {}
 }
 
 variable "tags" {

@@ -28,15 +28,23 @@ output "acm_certificate_arn" {
 }
 
 output "cloudfront_distribution_id" {
-  value = module.cloudfront.distribution_id
+  value = try(module.cloudfront[0].distribution_id, "")
 }
 
 output "cloudfront_domain_name" {
-  value = module.cloudfront.distribution_domain_name
+  value = try(module.cloudfront[0].distribution_domain_name, "")
 }
 
 output "github_deploy_role_arn" {
   value = module.iam.github_deploy_role_arn
+}
+
+output "github_plan_role_arn" {
+  value = module.iam.github_plan_role_arn
+}
+
+output "deploy_source_bucket" {
+  value = module.codepipeline.deploy_source_bucket_name
 }
 
 output "lb_controller_role_arn" {

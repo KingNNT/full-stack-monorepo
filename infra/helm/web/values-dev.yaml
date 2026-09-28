@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 ingress:
   enabled: true

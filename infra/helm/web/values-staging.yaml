@@ -1,11 +1,12 @@
 replicaCount: 2
 
 ingress:
-  host: example.com
+  host: staging.example.com
   certificateArn: ""
 
 env:
   API_BASE_URL: http://api:8000
-  AUTH_URL: https://example.com
+  AUTH_URL: https://staging.example.com
+  APP_URL: https://staging.example.com
 
 secrets: {}

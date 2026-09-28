@@ -19,9 +19,9 @@ data "aws_iam_policy_document" "github_assume_role" {
     }
 
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org}/${var.github_repo}:*"]
+      values   = ["repo:${var.github_org}/${var.github_repo}:environment:${var.environment}"]
     }
 
     condition {
@@ -66,12 +66,123 @@ data "aws_iam_policy_document" "github_deploy" {
     ]
     resources = ["*"]
   }
+
+  # Upload deploy-bundle.zip to the deploy source bucket
+  dynamic "statement" {
+    for_each = length(var.deploy_source_bucket_arns) > 0 ? [1] : []
+    content {
+      actions   = ["s3:PutObject"]
+      resources = [for arn in var.deploy_source_bucket_arns : "${arn}/*"]
+    }
+  }
+
+  # Start the deploy pipeline and wait for its result
+  dynamic "statement" {
+    for_each = length(var.codepipeline_arns) > 0 ? [1] : []
+    content {
+      actions = [
+        "codepipeline:StartPipelineExecution",
+        "codepipeline:GetPipelineExecution",
+        "codepipeline:GetPipelineState",
+      ]
+      resources = var.codepipeline_arns
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "github_deploy" {
   name   = "${var.project_name}-${var.environment}-github-deploy"
   role   = aws_iam_role.github_deploy.id
   policy = data.aws_iam_policy_document.github_deploy.json
+}
+
+# --- GitHub Actions Terraform Plan Role (pull requests) ---
+data "aws_iam_policy_document" "github_plan_assume_role" {
+  count = var.terraform_state_bucket != "" ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_org}/${var.github_repo}:pull_request"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_plan" {
+  count = var.terraform_state_bucket != "" ? 1 : 0
+
+  name               = "${var.project_name}-${var.environment}-github-plan"
+  assume_role_policy = data.aws_iam_policy_document.github_plan_assume_role[0].json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "github_plan_read_only" {
+  count = var.terraform_state_bucket != "" ? 1 : 0
+
+  role       = aws_iam_role.github_plan[0].name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+data "aws_iam_policy_document" "github_plan" {
+  count = var.terraform_state_bucket != "" ? 1 : 0
+
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::${var.terraform_state_bucket}"]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+    ]
+    resources = ["arn:aws:s3:::${var.terraform_state_bucket}/*"]
+  }
+
+  dynamic "statement" {
+    for_each = var.terraform_lock_table != "" ? [1] : []
+    content {
+      actions = [
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+      ]
+      resources = ["arn:aws:dynamodb:*:*:table/${var.terraform_lock_table}"]
+    }
+  }
+
+  # ReadOnlyAccess excludes secret values, but refreshing
+  # aws_secretsmanager_secret_version during plan needs them
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = ["arn:aws:secretsmanager:*:*:secret:/${var.environment}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "github_plan" {
+  count = var.terraform_state_bucket != "" ? 1 : 0
+
+  name   = "${var.project_name}-${var.environment}-github-plan"
+  role   = aws_iam_role.github_plan[0].id
+  policy = data.aws_iam_policy_document.github_plan[0].json
 }
 
 # --- IRSA: App Pods (S3 access) ---

@@ -31,6 +31,14 @@ output "github_deploy_role_arn" {
   value = module.iam.github_deploy_role_arn
 }
 
+output "github_plan_role_arn" {
+  value = module.iam.github_plan_role_arn
+}
+
+output "deploy_source_bucket" {
+  value = module.codepipeline.deploy_source_bucket_name
+}
+
 output "lb_controller_role_arn" {
   value = module.alb.lb_controller_role_arn
 }

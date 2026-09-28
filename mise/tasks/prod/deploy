@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-#MISE description="Deploy all services to prod"
+#MISE description="Deploy IMAGE_TAG=sha-<commit> to prod via CodePipeline (needs prod AWS credentials)"
 set -euo pipefail
 bash infra/scripts/deploy.sh prod all

@@ -31,6 +31,24 @@ spec:
                     {{- include "api.selectorLabels" . | nindent 20 }}
                 topologyKey: topology.kubernetes.io/zone
       {{- end }}
+      {{- if .Values.migrations.enabled }}
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.migrations.command | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "api.fullname" . }}
+            - secretRef:
+                name: {{ include "api.fullname" . }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
