@@ -30,9 +30,9 @@ export const RegisterForm = () => {
 
 	const registerSchema = z
 		.object({
-			name: z.string().min(1, t("validation.nameRequired")).min(2, t("validation.nameMinLength")),
+			username: z.string().regex(/^[a-zA-Z0-9_]{3,30}$/, t("validation.usernameInvalid")),
 			email: z.string().email(t("validation.invalidEmail")),
-			password: z.string().min(6, t("validation.passwordMinLength")),
+			password: z.string().min(8, t("validation.passwordMinLength")),
 			confirmPassword: z.string(),
 		})
 		.refine((data) => data.password === data.confirmPassword, {
@@ -45,7 +45,7 @@ export const RegisterForm = () => {
 	const form = useForm<TRegisterFormData>({
 		resolver: zodResolver(registerSchema),
 		defaultValues: {
-			name: "",
+			username: "",
 			email: "",
 			password: "",
 			confirmPassword: "",
@@ -57,9 +57,9 @@ export const RegisterForm = () => {
 		setError("");
 
 		try {
-			// Call the registration API using authApi
+			// Same-origin route handler, which forwards to the API
 			await authApi.register({
-				name: data.name,
+				username: data.username,
 				email: data.email,
 				password: data.password,
 			});
@@ -93,15 +93,15 @@ export const RegisterForm = () => {
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 						<FormField
 							control={form.control}
-							name="name"
+							name="username"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>{t("name")}</FormLabel>
+									<FormLabel>{t("username")}</FormLabel>
 									<FormControl>
 										<Input
 											type="text"
-											autoComplete="name"
-											placeholder={t("namePlaceholder")}
+											autoComplete="username"
+											placeholder={t("usernamePlaceholder")}
 											disabled={isLoading}
 											{...field}
 										/>

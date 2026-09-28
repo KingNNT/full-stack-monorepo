@@ -7,14 +7,22 @@ import type { IErrorResponse, ISuccessResponse } from "@/types/api";
 import type { IUser } from "@/types/user";
 
 export interface ILoginRequest {
-	email: string;
+	/** Email address or username */
+	identifier: string;
 	password: string;
 }
 
 export interface ILoginData {
 	readonly access_token: string;
 	readonly refresh_token: string;
-	readonly user: IUser;
+}
+
+/**
+ * Result of a successful login: the user plus the API tokens kept in the NextAuth JWT
+ */
+export interface IAuthenticatedUser extends IUser {
+	accessToken: string;
+	refreshToken: string;
 }
 
 export interface ILoginSuccessResponse extends ISuccessResponse<ILoginData> {}
@@ -24,13 +32,13 @@ export interface ILoginErrorResponse extends IErrorResponse<TAuthServiceErrorCod
 export type TLoginResult = ILoginSuccessResponse | ILoginErrorResponse;
 
 export interface IRegisterRequest {
-	name: string;
+	username: string;
 	email: string;
 	password: string;
 }
 
 export interface IRegisterData {
-	readonly user: IUser;
+	readonly user_id: string;
 }
 
 export interface IRegisterSuccessResponse extends ISuccessResponse<IRegisterData> {}

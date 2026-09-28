@@ -1,7 +1,8 @@
+// Created by the API seed (`mise run local:db-seed`)
 export const TEST_USER = {
-	email: "demo@example.com",
-	password: "demo123",
-	name: "Demo User",
+	email: "admin@example.com",
+	password: "admin123456",
+	username: "admin",
 };
 
 export const INVALID_CREDENTIALS = {

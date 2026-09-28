@@ -39,7 +39,7 @@ export const LoginForm = () => {
 
 	const loginSchema = z.object({
 		email: z.string().email(t("validation.invalidEmail")),
-		password: z.string().min(6, t("validation.passwordMinLength")),
+		password: z.string().min(8, t("validation.passwordMinLength")),
 	});
 
 	type TLoginFormData = z.infer<typeof loginSchema>;

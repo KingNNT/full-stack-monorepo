@@ -14,13 +14,32 @@ async function expectToThrow(promise: Promise<unknown>, expectedName: string) {
 
 const mockLogin = vi.fn();
 const mockRegister = vi.fn();
+const mockGetProfile = vi.fn();
 
 vi.mock("@/apis", () => ({
 	authApi: {
 		login: (...args: unknown[]) => mockLogin(...args),
 		register: (...args: unknown[]) => mockRegister(...args),
 	},
+	userApi: {
+		getProfile: (...args: unknown[]) => mockGetProfile(...args),
+	},
 }));
+
+const TOKENS = { access_token: "access", refresh_token: "refresh" };
+const PROFILE = {
+	user_id: "1",
+	email: "demo@example.com",
+	username: "demo_user",
+	is_active: true,
+};
+const AUTHENTICATED_USER = {
+	id: "1",
+	email: "demo@example.com",
+	username: "demo_user",
+	accessToken: "access",
+	refreshToken: "refresh",
+};
 
 describe("AuthService integration", () => {
 	let service: AuthService;
@@ -31,21 +50,20 @@ describe("AuthService integration", () => {
 	});
 
 	describe("login flow", () => {
-		it("validates input, calls API, and returns user on success", async () => {
-			const mockUser = { id: "1", name: "Demo User", email: "demo@example.com" };
-			mockLogin.mockResolvedValue({
-				access_token: "token",
-				refresh_token: "refresh",
-				user: mockUser,
-			});
+		it("validates input, logs in, loads the profile and returns user with tokens", async () => {
+			mockLogin.mockResolvedValue(TOKENS);
+			mockGetProfile.mockResolvedValue(PROFILE);
 
 			const user = await service.login("demo@example.com", "password123");
 
 			expect(mockLogin).toHaveBeenCalledWith({
-				email: "demo@example.com",
+				identifier: "demo@example.com",
 				password: "password123",
 			});
-			expect(user).toEqual(mockUser);
+			expect(mockGetProfile).toHaveBeenCalledWith({
+				headers: { Authorization: "Bearer access" },
+			});
+			expect(user).toEqual(AUTHENTICATED_USER);
 		});
 
 		it("rejects before API call when credentials are missing", async () => {
@@ -54,7 +72,7 @@ describe("AuthService integration", () => {
 		});
 
 		it("rejects before API call when email is invalid", async () => {
-			await expectToThrow(service.login("not-an-email", "pass123"), "InvalidEmailException");
+			await expectToThrow(service.login("not-an-email", "pass1234"), "InvalidEmailException");
 			expect(mockLogin).not.toHaveBeenCalled();
 		});
 
@@ -81,30 +99,32 @@ describe("AuthService integration", () => {
 	});
 
 	describe("register flow", () => {
-		it("validates input, calls API, and returns user on success", async () => {
-			const mockUser = { id: "2", name: "New User", email: "new@example.com" };
-			mockRegister.mockResolvedValue({ user: mockUser });
+		it("validates input, calls API, and returns the new user ID", async () => {
+			mockRegister.mockResolvedValue({ user_id: "2" });
 
-			const user = await service.register("New User", "new@example.com", "securepass");
+			const result = await service.register("new_user", "new@example.com", "securepass");
 
 			expect(mockRegister).toHaveBeenCalledWith({
-				name: "New User",
+				username: "new_user",
 				email: "new@example.com",
 				password: "securepass",
 			});
-			expect(user).toEqual(mockUser);
+			expect(result).toEqual({ user_id: "2" });
 		});
 
 		it("rejects before API call when fields are missing", async () => {
 			await expectToThrow(
-				service.register("", "a@b.com", "pass123"),
+				service.register("", "a@b.com", "pass1234"),
 				"MissingCredentialsException",
 			);
 			expect(mockRegister).not.toHaveBeenCalled();
 		});
 
-		it("rejects before API call when name is too short", async () => {
-			await expectToThrow(service.register("A", "a@b.com", "pass123"), "InvalidNameException");
+		it("rejects before API call when username is malformed", async () => {
+			await expectToThrow(
+				service.register("a!", "a@b.com", "pass1234"),
+				"InvalidUsernameException",
+			);
 			expect(mockRegister).not.toHaveBeenCalled();
 		});
 
@@ -112,7 +132,7 @@ describe("AuthService integration", () => {
 			mockRegister.mockRejectedValue(new HttpStatusError(409, "Conflict"));
 
 			await expectToThrow(
-				service.register("New User", "taken@example.com", "pass123"),
+				service.register("new_user", "taken@example.com", "pass1234"),
 				"EmailExistsException",
 			);
 		});
@@ -121,7 +141,7 @@ describe("AuthService integration", () => {
 			const serverError = new HttpStatusError(500, "Internal Server Error");
 			mockRegister.mockRejectedValue(serverError);
 
-			await expect(service.register("New User", "new@example.com", "pass123")).rejects.toThrow(
+			await expect(service.register("new_user", "new@example.com", "pass1234")).rejects.toThrow(
 				serverError,
 			);
 		});

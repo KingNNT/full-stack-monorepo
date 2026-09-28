@@ -8,7 +8,7 @@ import { BaseApi } from "./base-api";
 
 /**
  * Authentication API service
- * Handles login, registration, logout, and token refresh
+ * Handles login and registration
  */
 export class AuthApi extends BaseApi {
 	/**
@@ -19,13 +19,13 @@ export class AuthApi extends BaseApi {
 	}
 
 	/**
-	 * Login with email and password
-	 * @param credentials - User credentials (email, password)
-	 * @returns Login data with access token, refresh token, and user info
+	 * Login with email or username + password
+	 * @param credentials - User credentials (identifier, password)
+	 * @returns Access and refresh tokens
 	 *
 	 * @example
 	 * const result = await authApi.login({
-	 *   email: 'user@example.com',
+	 *   identifier: 'user@example.com',
 	 *   password: 'password123'
 	 * });
 	 */
@@ -35,39 +35,17 @@ export class AuthApi extends BaseApi {
 
 	/**
 	 * Register a new user account
-	 * @param data - Registration data (name, email, password)
-	 * @returns Registration data with user info
+	 * @param data - Registration data (username, email, password)
+	 * @returns The created user's ID
 	 *
 	 * @example
 	 * const result = await authApi.register({
-	 *   name: 'John Doe',
+	 *   username: 'john_doe',
 	 *   email: 'john@example.com',
 	 *   password: 'password123'
 	 * });
 	 */
 	async register(data: IRegisterRequest): Promise<IRegisterData> {
 		return this.post<IRegisterData>(this.buildUrl("/register"), data);
-	}
-
-	/**
-	 * Logout current user
-	 * @returns Void
-	 *
-	 * @example
-	 * await authApi.logout();
-	 */
-	async logout(): Promise<void> {
-		return this.post<void>(this.buildUrl("/logout"));
-	}
-
-	/**
-	 * Refresh access token
-	 * @returns New access token
-	 *
-	 * @example
-	 * const { access_token } = await authApi.refreshToken();
-	 */
-	async refreshToken(): Promise<{ access_token: string }> {
-		return this.post<{ access_token: string }>(this.buildUrl("/refresh"));
 	}
 }

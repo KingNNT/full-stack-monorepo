@@ -72,12 +72,12 @@ export class EmailExistsException extends AuthException {
 }
 
 /**
- * Exception thrown when name is invalid
+ * Exception thrown when username is invalid
  */
-export class InvalidNameException extends AuthException {
-	constructor(message = "Invalid name") {
-		super(message, AUTH_SERVICE_ERROR_CODES.INVALID_NAME, 400);
-		this.name = "InvalidNameException";
+export class InvalidUsernameException extends AuthException {
+	constructor(message = "Invalid username") {
+		super(message, AUTH_SERVICE_ERROR_CODES.INVALID_USERNAME, 400);
+		this.name = "InvalidUsernameException";
 	}
 }
 

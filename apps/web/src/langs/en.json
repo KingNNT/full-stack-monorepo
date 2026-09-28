@@ -41,7 +41,7 @@
 			"generalError": "An error occurred. Please try again.",
 			"validation": {
 				"invalidEmail": "Invalid email address",
-				"passwordMinLength": "Password must be at least 6 characters"
+				"passwordMinLength": "Password must be at least 8 characters"
 			},
 			"noAccount": "Don't have an account?",
 			"registerLink": "Register here"
@@ -49,8 +49,8 @@
 		"register": {
 			"title": "Create Account",
 			"description": "Enter your information to create a new account",
-			"name": "Full Name",
-			"namePlaceholder": "John Doe",
+			"username": "Username",
+			"usernamePlaceholder": "john_doe",
 			"email": "Email",
 			"emailPlaceholder": "user@example.com",
 			"password": "Password",
@@ -62,12 +62,11 @@
 			"generalError": "An error occurred. Please try again.",
 			"validation": {
 				"invalidEmail": "Invalid email address",
-				"passwordMinLength": "Password must be at least 6 characters",
+				"passwordMinLength": "Password must be at least 8 characters",
 				"passwordsNotMatch": "Passwords do not match",
-				"nameRequired": "Full name is required",
-				"nameMinLength": "Name must be at least 2 characters"
+				"usernameInvalid": "Username must be 3–30 characters: letters, numbers or underscores"
 			},
-			"emailExists": "An account with this email already exists",
+			"emailExists": "An account with this email or username already exists",
 			"successMessage": "Account created successfully! Redirecting...",
 			"haveAccount": "Already have an account?",
 			"loginLink": "Login here"
