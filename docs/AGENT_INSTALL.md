@@ -42,8 +42,11 @@ GIT_USER_EMAIL=john@example.com \
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
 ```
 
-Use `bash -c "$(curl ...)"`, not `curl ... | bash`. A pipe occupies stdin, which
-the script's interactive fallback needs.
+Use `bash -c "$(curl ...)"`, not `VAR=... curl ... | bash`. In the piped form
+the variable prefix applies to `curl`, so the script never sees them, and bash
+reads the script from stdin, where any child command that reads stdin can
+swallow the rest of it. (Interactive prompts read `/dev/tty`, not stdin, but an
+agent has no TTY — the variables are the only input path.)
 
 What the script does, in order — know this before you run it:
 

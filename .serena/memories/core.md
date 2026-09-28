@@ -1,5 +1,3 @@
-- Nx monorepo at project root; primary apps: `apps/api` (NestJS backend) and `apps/web` (Next.js frontend).
-- Shared/reserved workspace: `packages/`.
-- Root package manager invariant: pnpm only; tool versions via mise.
-- Read `mem:tech_stack` for tool/version details; `mem:conventions` for repo conventions; `mem:suggested_commands` for common commands; `mem:task_completion` before declaring coding work complete.
-- Module-specific maps: `mem:api/core` and `mem:web/core`.
+- Canonical agent instructions live in `AGENTS.md` files, not in memories: root `AGENTS.md` (hard rules, commands, layout, tooling, env), `apps/api/AGENTS.md`, `apps/web/AGENTS.md`, `infra/AGENTS.md`, plus detail docs in `apps/<app>/docs/agents/{code-styles,security,testing}.md`. Read the root file first and the scoped one before editing inside that area.
+- Memories hold only facts absent from those files; never duplicate `AGENTS.md` content here.
+- Read `mem:task_completion` before declaring coding work complete — validation order and relocation checks.

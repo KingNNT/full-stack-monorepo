@@ -5,10 +5,6 @@ paths:
 
 # API Code Styles
 
-## Package Manager
-
-- **pnpm only** — never use npm, npx, or yarn. Use `pnpm` / `pnpm exec` / `pnpm dlx` instead.
-
 ## Formatting
 
 - Single quotes, 2-space indentation, 80-char line width (see `apps/api/biome.json`)

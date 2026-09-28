@@ -15,20 +15,20 @@ Nx monorepo with a NestJS API backend and Next.js web frontend.
 
 ## Quick Install
 
-One-liner for a fresh macOS or Linux machine (installs mise, then Node LTS + pnpm via `mise install`, clones the repo, copies `.env`, runs `pnpm install`):
+One-liner for a fresh macOS or Linux machine. It asks for a project name and your git identity, installs mise (then Node LTS + pnpm via `mise install`), clones the template, renames it, creates `.env` with generated secrets, re-initializes git with a single commit, and runs `pnpm install`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
 ```
 
 Optional overrides:
 
 ```bash
 INSTALL_DIR=~/code/monorepo BRANCH=main USE_HTTPS=1 \
-  curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | bash
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
 ```
 
-Always inspect the script before piping to bash:
+Always inspect the script before running it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh | less
@@ -36,8 +36,22 @@ curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop
 
 ### Install with an AI agent
 
-`install.sh` skips its prompts when the three values are supplied as environment
-variables, so an agent can run it unattended:
+Paste this into Claude Code, Codex, Cursor, or any agent that can fetch URLs and
+run shell commands, from the directory that should contain the project:
+
+```
+Install this project by following
+https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/docs/AGENT_INSTALL.md
+PROJECT_NAME=my-app, GIT_USER_NAME="John Doe", GIT_USER_EMAIL=john@example.com
+```
+
+Already cloned? Open the agent at the repo root and say:
+`Set up this repo following AGENTS.md and docs/AGENT_INSTALL.md.`
+
+The agent scaffolds the project, starts PostgreSQL + API, migrates, seeds, and
+smoke-tests both apps before reporting success. Under the hood it runs
+`install.sh` unattended — the script skips its prompts when all three values are
+supplied as environment variables:
 
 ```bash
 PROJECT_NAME=my-app \
@@ -64,8 +78,11 @@ Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/
 mise trust ./mise.toml && mise install
 pnpm install
 
-# Copy env file
+# Create .env with generated secrets (skip if it already exists)
 cp .env.example .env
+for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
+  sed -i.bak "s|^${var}=.*|${var}=$(openssl rand -base64 48 | tr -d '\n')|" .env && rm -f .env.bak
+done
 
 # Start PostgreSQL + API (first run builds the API image — several minutes)
 mise run local:docker-up-api
@@ -122,9 +139,13 @@ apps/
       services/       Auth service, NextAuth config
       types/          Shared TypeScript types
       utils/          Utility functions
+      proxy.ts        Locale detection + auth route protection
+    tests/            Vitest integration tests & helpers
     e2e/              Playwright E2E tests
 
 packages/           Shared libraries (reserved)
+infra/              Terraform, Helm charts, CodeBuild specs (see docs/infrastructure.md)
+mise/tasks/         mise task scripts per environment (local, dev, staging, prod)
 ```
 
 ## Commands
@@ -159,7 +180,7 @@ mise run local:db-seed          # Seed RBAC data
 mise run local:docker-up        # Build and start all services
 mise run local:docker-down      # Stop all
 mise run local:docker-logs      # Tail logs
-mise run local:docker-clean     # Remove volumes and images
+mise run local:docker-clean     # Remove volumes and images — deletes the database
 
 # Full task list
 mise tasks ls             # Show all available tasks
@@ -188,7 +209,7 @@ modules/{domain}/
 ### Web (App Router + i18n)
 
 - Route groups: `(authenticated)` for protected routes, `(unauthenticated)` for public
-- Middleware handles locale detection + auth route protection
+- `src/proxy.ts` (Next.js 16's replacement for middleware) handles locale detection + auth route protection
 - API client with retry, token injection, and structured error hierarchy
 - Server components by default, `"use client"` only where needed
 
@@ -213,9 +234,23 @@ modules/{domain}/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `AUTH_SECRET` | NextAuth secret | - |
-| `API_BASE_URL` | API base URL (server-side, read at runtime) | `http://localhost:8000` |
-| `AUTH_URL` | Auth.js URL | `http://localhost:3000` |
-| `APP_URL` | Public site URL (metadata, sitemap) | `http://localhost:3000` |
+| `API_BASE_URL` | API base URL (server-side, read at runtime) — required | - |
+| `AUTH_URL` | Auth.js URL | inferred by Auth.js |
+| `APP_URL` | Public site URL (metadata, sitemap) | `https://kingNNT.org` |
+| `API_TIMEOUT` | API request timeout (ms) | `30000` |
+| `API_MAX_RETRIES` | Retries for idempotent API requests | `3` |
+| `API_RETRY_DELAY` | Initial retry delay (ms) | `1000` |
+| `API_RETRY_BACKOFF` | Retry backoff multiplier | `2` |
+
+### PostgreSQL (Docker Compose)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `POSTGRES_USER` | Database user | `postgres` |
+| `POSTGRES_PASSWORD` | Database password | `password` |
+| `POSTGRES_DB` | Database name | `fullstack_monorepo_dev` |
+
+Defaults are what the code falls back to when a variable is unset; `.env.example` sets working local values for all of them.
 
 **Setup:** `mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `mise.local.toml` (both gitignored).
 
@@ -223,4 +258,5 @@ modules/{domain}/
 
 - **Linter/Formatter**: Biome (API: single quotes, 2 spaces, 80 chars / Web: double quotes, tabs, 100 chars)
 - **Git hooks**: Husky pre-commit runs lint-staged (Biome) followed by the repository-wide Gitleaks scan (`./tools/bin/gitleaks detect --source . --redact`); commit-msg runs commitlint (conventional commits)
-- **CI**: GitHub Actions runs `pnpm nx affected -t lint typecheck test build` on push to main and PRs
+- **CI/CD** (git flow): CI runs `pnpm nx affected -t lint typecheck test build` on PRs and pushes to `develop`/`main`; `release/*` and `hotfix/*` deploy to staging, `v*` tags deploy to prod — see [`docs/infrastructure.md`](docs/infrastructure.md#cicd-pipeline)
+- **AI agents**: shared instructions in [`AGENTS.md`](AGENTS.md), scoped ones in `apps/api/`, `apps/web/`, and `infra/`; `CLAUDE.md` files import them
