@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # dev:     helm upgrade into the local kind cluster, using the images built by
-#          `mise run dev:k8s-up` (fullstack-monorepo/<app>:dev).
+#          `mise run dev:k8s:up` (fullstack-monorepo/<app>:dev).
 # staging/prod: same path as .github/workflows/deploy.yml — upload a deploy
 #          bundle for an image tag already in that account's ECR and run the
 #          CodePipeline. Needs AWS credentials for the target account

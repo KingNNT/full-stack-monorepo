@@ -16,7 +16,7 @@ versions (Node LTS, pnpm) and task shortcuts are managed by
 1. **pnpm only.** Never run `npm`, `npx`, or `yarn`. Use `pnpm`, `pnpm exec`, `pnpm dlx`.
 2. **Never modify, print, or commit an existing `.env`** (`apps/<app>/.env*`) — create it from that app's `.env.example` only when it is absent.
 3. **Never commit, push, or create branches** unless the user explicitly asks.
-4. **Never run `mise run local:docker-clean`** — it destroys database volumes.
+4. **Never run `mise run local:docker:clean`** — it destroys database volumes.
 
 ## Scoped instructions — read before editing
 
@@ -48,18 +48,21 @@ pnpm nx affected -t lint typecheck test build   # what CI runs
 Tasks are namespaced by environment: `local:*` (dev machine — apps, db,
 docker), `dev:*` (kind/LocalStack cluster), `staging:*` and `prod:*` (helm
 deploys). Task files live in `mise/tasks/<env>/` as executable bash scripts
-with a `#MISE description="…"` header; `mise tasks ls` lists them.
+with a `#MISE description="…"` header; `mise tasks ls` lists them. Each
+directory level is a `:` segment (`mise/tasks/local/docker/up/api` →
+`local:docker:up:api`); a `_default` file names the directory itself
+(`local/test/_default` → `local:test`).
 Short aliases: `mise run dev | lint | test | typecheck`.
 
 ```bash
-mise run local:docker-up-api     # postgres + api containers
-mise run local:docker-up         # api + web + postgres
-mise run local:docker-down       # stop all
-mise run local:docker-logs       # tail logs
-mise run local:db-generate       # migrations from schema changes
-mise run local:db-migrate
-mise run local:db-seed           # RBAC roles/permissions + default users (API must be up)
-mise run local:db-studio
+mise run local:docker:up:api     # postgres + api containers
+mise run local:docker:up         # api + web + postgres
+mise run local:docker:down       # stop all
+mise run local:docker:logs       # tail logs
+mise run local:db:generate       # migrations from schema changes
+mise run local:db:migrate
+mise run local:db:seed           # RBAC roles/permissions + default users (API must be up)
+mise run local:db:studio
 ```
 
 ## Layout

@@ -152,7 +152,7 @@ Verify: `grep -c '^JWT_ACCESS_SECRET=.\+' apps/api/.env` and
 ### Step 4 — Start PostgreSQL and the API container
 
 ```bash
-mise run local:docker-up-api
+mise run local:docker:up:api
 ```
 
 This runs `docker compose up --build -d postgres api`. **The first run builds
@@ -175,7 +175,7 @@ unavailable, see [§D](#d-troubleshooting).
 ### Step 5 — Run migrations
 
 ```bash
-mise run local:db-migrate
+mise run local:db:migrate
 ```
 
 Verify: exit code 0.
@@ -183,7 +183,7 @@ Verify: exit code 0.
 ### Step 6 — Seed RBAC data
 
 ```bash
-mise run local:db-seed
+mise run local:db:seed
 ```
 
 Verify: exit code 0. This creates the baseline roles and permissions, and
@@ -257,7 +257,7 @@ Run the start, check, and stop in **one shell session** — `WEB_PID` does not
 survive across separate shell invocations.
 
 If either app never answers, read `/tmp/dev-web.log` and
-`mise run local:docker-logs` before reporting failure.
+`mise run local:docker:logs` before reporting failure.
 
 **Do not report success until every box is checked:**
 
@@ -265,8 +265,8 @@ If either app never answers, read `/tmp/dev-web.log` and
 - [ ] `pnpm install` succeeded
 - [ ] `apps/api/.env` and `apps/web/.env` exist (pre-existing and untouched, or created with generated secrets)
 - [ ] `postgres` and `api` containers are up
-- [ ] `local:db-migrate` exited 0
-- [ ] `local:db-seed` exited 0
+- [ ] `local:db:migrate` exited 0
+- [ ] `local:db:seed` exited 0
 - [ ] `curl -fsS http://localhost:8000/v1/health` output contains `"status":"ok"`
 - [ ] `curl -I http://localhost:3000` returned 2xx or 3xx
 - [ ] The background web dev process was stopped **and port 3000 is free**
@@ -299,7 +299,7 @@ mise run typecheck
 - Overwrite, edit, or print the contents of an existing `.env` file.
 - Commit, push, or create branches unless the user explicitly asks.
 - Use `npm`, `npx`, or `yarn`.
-- Run `mise run local:docker-clean` — it deletes volumes, and with them the database.
+- Run `mise run local:docker:clean` — it deletes volumes, and with them the database.
 - Run the dev server in the foreground.
 - Kill a process or container you did not start. Ask the user first.
 - Report success without completing the §C checklist.

@@ -408,11 +408,11 @@ Runs the apps directly in Docker containers. Fastest way to develop.
 ### Full K8s Environment (integration testing)
 
 ```bash
-make k8s-up      # Full stack: LocalStack + kind + Terraform + Helm
-make k8s-down    # Teardown everything
+mise run dev:k8s:up                  # Full stack: LocalStack + kind + Terraform + Helm
+mise run dev:k8s:down                # Teardown everything
 ```
 
-What `k8s-up` does (7 steps):
+What `dev:k8s:up` does (7 steps):
 1. Start LocalStack (AWS API emulation)
 2. Create kind cluster (local Kubernetes)
 3. Install nginx-ingress controller
@@ -430,9 +430,9 @@ kubectl port-forward svc/web 3000:3000 -n dev
 ### Monitoring Stack
 
 ```bash
-make monitoring-up ENV=dev      # Deploy Prometheus + Grafana + Loki + Tempo
-make monitoring-port-forward    # Grafana at http://localhost:3001
-make monitoring-down            # Remove monitoring stack
+mise run dev:monitoring:up           # Deploy Prometheus + Grafana + Loki + Tempo
+mise run dev:monitoring:port-forward # Grafana at http://localhost:3001
+mise run dev:monitoring:down         # Remove monitoring stack
 ```
 
 ---
