@@ -2,9 +2,6 @@
 node = "lts"
 pnpm = "11"
 
-[env]
-_.file = ".env"
-
 # Short aliases for the most common daily commands
 [tasks.dev]
 description = "Start all apps in dev mode"

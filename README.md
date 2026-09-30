@@ -15,7 +15,7 @@ Nx monorepo with a NestJS API backend and Next.js web frontend.
 
 ## Quick Install
 
-One-liner for a fresh macOS or Linux machine. It asks for a project name and your git identity, installs mise (then Node LTS + pnpm via `mise install`), clones the template, renames it, creates `.env` with generated secrets, re-initializes git with a single commit, and runs `pnpm install`:
+One-liner for a fresh macOS or Linux machine. It asks for a project name and your git identity, installs mise (then Node LTS + pnpm via `mise install`), clones the template, renames it, creates `apps/api/.env` and `apps/web/.env` with generated secrets, re-initializes git with a single commit, and runs `pnpm install`:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/KingNNT/full-stack-monorepo/develop/install.sh)"
@@ -78,10 +78,14 @@ Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/
 mise trust ./mise.toml && mise install
 pnpm install
 
-# Create .env with generated secrets (skip if it already exists)
-cp .env.example .env
-for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
-  sed -i.bak "s|^${var}=.*|${var}=$(openssl rand -base64 48 | tr -d '\n')|" .env && rm -f .env.bak
+# Create each app's .env with generated secrets (skip any that already exist)
+for app in api web; do
+  f="apps/$app/.env"
+  [ -f "$f" ] && continue
+  cp "apps/$app/.env.example" "$f"
+  for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
+    sed -i.bak "s|^${var}=.*|${var}=$(openssl rand -base64 48 | tr -d '\n')|" "$f" && rm -f "$f.bak"
+  done
 done
 
 # Start PostgreSQL + API (first run builds the API image — several minutes)
@@ -250,9 +254,9 @@ modules/{domain}/
 | `POSTGRES_PASSWORD` | Database password | `password` |
 | `POSTGRES_DB` | Database name | `fullstack_monorepo_dev` |
 
-Defaults are what the code falls back to when a variable is unset; `.env.example` sets working local values for all of them.
+Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell.
 
-**Setup:** `mise.toml` loads `.env` automatically. For personal overrides, create `.env.local` and add `_.file = ".env.local"` to `mise.local.toml` (both gitignored).
+**Setup:** each app loads its own `.env` from its directory (Nest `ConfigModule`, Next.js, drizzle-kit and the seed script). Docker Compose passes `apps/<app>/.env` to each container. There is no root `.env`. Tests: `NODE_ENV=test` also loads `.env.test` in the same app directory. Web-only personal overrides can go in `apps/web/.env.local` (gitignored).
 
 ## Tooling
 

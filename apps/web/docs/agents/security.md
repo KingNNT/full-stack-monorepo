@@ -79,6 +79,6 @@ ApiClientException
 ## Environment & Secrets
 
 - All secrets via environment variables — never hardcoded
-- `.env.example` documents required variables — keep updated
+- `apps/web/.env.example` documents required variables — keep updated
 - Key vars: `AUTH_SECRET`, `API_BASE_URL`, `AUTH_URL`
 - `NEXT_PUBLIC_*` vars are exposed to the browser — never put secrets in them

@@ -19,7 +19,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    env_file: .env
+    env_file: apps/api/.env
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-fullstack_monorepo_dev}
@@ -31,7 +31,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    env_file: .env
+    env_file: apps/web/.env
     environment:
       NODE_ENV: production
       API_BASE_URL: http://api:8000

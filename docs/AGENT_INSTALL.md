@@ -53,8 +53,8 @@ What the script does, in order — know this before you run it:
 1. Verifies `git`, installs `mise` if missing, warns if Docker is absent.
 2. Clones `develop` into `./<PROJECT_NAME>`. **Fails if that directory exists.**
 3. Rewrites `fullstack-monorepo` → `<PROJECT_NAME>` across all tracked files.
-4. Copies `.env.example` → `.env` and generates `JWT_ACCESS_SECRET`,
-   `JWT_REFRESH_SECRET`, `AUTH_SECRET`.
+4. Copies `apps/<app>/.env.example` → `apps/<app>/.env` for `api` and `web`,
+   generating `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` (api) and `AUTH_SECRET` (web).
 5. Trusts the cloned `mise.toml` and runs `mise install`.
 6. **Deletes `install.sh`.**
 7. **Deletes `.git` and re-initializes it** with one commit. The template's
@@ -66,7 +66,7 @@ Verify:
 ```bash
 cd my-saas-app
 grep -m1 '"name"' package.json     # expect the new project name
-grep -c '^JWT_ACCESS_SECRET=.\+' .env   # expect 1
+grep -c '^JWT_ACCESS_SECRET=.\+' apps/api/.env   # expect 1
 ```
 
 The script put the mise shims on `PATH` inside its own process, not in yours —
@@ -119,26 +119,35 @@ Verify: `node_modules/` exists at the repo root and the command exited 0.
 
 Check first:
 
-```bash
-test -f .env && echo "EXISTS" || echo "MISSING"
-```
-
-**If `EXISTS`: leave it as-is and continue to step 4.** Do not read its
-contents, modify it, or overwrite it. Note in your final report that `.env` was
-pre-existing and left untouched.
-
-If `MISSING`:
+Each app has its own env file; there is no root `.env`. Check both first:
 
 ```bash
-cp .env.example .env
-for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
-  secret="$(openssl rand -base64 48 | tr -d '\n')"
-  sed -i.bak "s|^${var}=.*|${var}=${secret}|" .env
-  rm -f .env.bak
+for app in api web; do
+  test -f "apps/$app/.env" && echo "$app: EXISTS" || echo "$app: MISSING"
 done
 ```
 
-Verify: `grep -c '^JWT_ACCESS_SECRET=.\+' .env` prints `1`.
+**For each app that `EXISTS`: leave it as-is.** Do not read its contents,
+modify it, or overwrite it. Note in your final report which `.env` files were
+pre-existing and left untouched.
+
+For each app that is `MISSING` (the loop skips existing files):
+
+```bash
+for app in api web; do
+  f="apps/$app/.env"
+  [ -f "$f" ] && continue
+  cp "apps/$app/.env.example" "$f"
+  for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
+    secret="$(openssl rand -base64 48 | tr -d '\n')"
+    sed -i.bak "s|^${var}=.*|${var}=${secret}|" "$f"
+    rm -f "$f.bak"
+  done
+done
+```
+
+Verify: `grep -c '^JWT_ACCESS_SECRET=.\+' apps/api/.env` and
+`grep -c '^AUTH_SECRET=.\+' apps/web/.env` each print `1`.
 
 ### Step 4 — Start PostgreSQL and the API container
 
@@ -254,7 +263,7 @@ If either app never answers, read `/tmp/dev-web.log` and
 
 - [ ] `mise trust` + `mise install` succeeded, `node` and `pnpm` resolve
 - [ ] `pnpm install` succeeded
-- [ ] `.env` exists (pre-existing and untouched, or created with generated secrets)
+- [ ] `apps/api/.env` and `apps/web/.env` exist (pre-existing and untouched, or created with generated secrets)
 - [ ] `postgres` and `api` containers are up
 - [ ] `local:db-migrate` exited 0
 - [ ] `local:db-seed` exited 0
@@ -287,7 +296,7 @@ mise run typecheck
 
 ## E. Do not
 
-- Overwrite, edit, or print the contents of an existing `.env`.
+- Overwrite, edit, or print the contents of an existing `.env` file.
 - Commit, push, or create branches unless the user explicitly asks.
 - Use `npm`, `npx`, or `yarn`.
 - Run `mise run local:docker-clean` — it deletes volumes, and with them the database.

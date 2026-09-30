@@ -8,13 +8,13 @@ of truth; harness-specific files (`CLAUDE.md`, …) only import or extend it.
 
 An Nx monorepo: a NestJS 11 API (`apps/api`, port 8000) and a Next.js 16 web app
 (`apps/web`, port 3000), sharing PostgreSQL 16 via Drizzle ORM. Toolchain
-versions (Node LTS, pnpm), env vars, and task shortcuts are managed by
-[mise](https://mise.jdx.dev) (`mise.toml`).
+versions (Node LTS, pnpm) and task shortcuts are managed by
+[mise](https://mise.jdx.dev) (`mise.toml`); env vars live per app.
 
 ## Hard rules
 
 1. **pnpm only.** Never run `npm`, `npx`, or `yarn`. Use `pnpm`, `pnpm exec`, `pnpm dlx`.
-2. **Never modify, print, or commit an existing `.env`** — create it from `.env.example` only when it is absent.
+2. **Never modify, print, or commit an existing `.env`** (`apps/<app>/.env*`) — create it from that app's `.env.example` only when it is absent.
 3. **Never commit, push, or create branches** unless the user explicitly asks.
 4. **Never run `mise run local:docker-clean`** — it destroys database volumes.
 
@@ -86,9 +86,11 @@ mise run local:db-studio
 
 ## Environment variables
 
-mise loads the root `.env` (template: `.env.example`), shared by all apps. For
-personal overrides create `mise.local.toml` with `_.file = ".env.local"`
-(gitignored). Key variables:
+Each app owns its env: `apps/api/.env` and `apps/web/.env` (templates:
+`.env.example` next to them). There is no root `.env` — add a new variable to
+the template of the app that reads it. `NODE_ENV=test` also loads `.env.test`
+from the same directory; Docker Compose passes each app's `.env` to its
+container. Key variables:
 
 - API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `API_PORT`
 - Web: `AUTH_SECRET`, `API_BASE_URL`, `AUTH_URL`
