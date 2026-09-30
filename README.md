@@ -63,7 +63,7 @@ GIT_USER_EMAIL=john@example.com \
 Agents should read [`AGENTS.md`](AGENTS.md) first; the full runbook — including
 setup for an already-cloned repo — is in [`docs/AGENT_INSTALL.md`](docs/AGENT_INSTALL.md).
 
-Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/gitleaks` falls back to `docker run` when no local `gitleaks` binary is on PATH); install it separately if you also plan to use `mise run local:docker-up` or integration tests.
+Docker is required for the pre-commit Gitleaks scan (the helper at `./tools/bin/gitleaks` falls back to `docker run` when no local `gitleaks` binary is on PATH); install it separately if you also plan to use `mise run local:docker:up` or integration tests.
 
 ## Prerequisites
 
@@ -89,13 +89,13 @@ for app in api web; do
 done
 
 # Start PostgreSQL + API (first run builds the API image — several minutes)
-mise run local:docker-up-api
+mise run local:docker:up:api
 
 # Run database migrations
-mise run local:db-migrate
+mise run local:db:migrate
 
 # Seed RBAC data + default users (registers them through the API, so it must be up)
-mise run local:db-seed
+mise run local:db:seed
 
 # Start development — stop the api container first, it holds port 8000:
 #   docker compose stop api
@@ -175,16 +175,16 @@ pnpm nx run api:lint
 pnpm storybook:web        # Start Storybook dev server (Web)
 
 # Database
-mise run local:db-generate      # Generate migrations from schema
-mise run local:db-migrate       # Run migrations
-mise run local:db-studio        # Open Drizzle Studio
-mise run local:db-seed          # Seed RBAC data
+mise run local:db:generate      # Generate migrations from schema
+mise run local:db:migrate       # Run migrations
+mise run local:db:studio        # Open Drizzle Studio
+mise run local:db:seed          # Seed RBAC data
 
 # Docker
-mise run local:docker-up        # Build and start all services
-mise run local:docker-down      # Stop all
-mise run local:docker-logs      # Tail logs
-mise run local:docker-clean     # Remove volumes and images — deletes the database
+mise run local:docker:up        # Build and start all services
+mise run local:docker:down      # Stop all
+mise run local:docker:logs      # Tail logs
+mise run local:docker:clean     # Remove volumes and images — deletes the database
 
 # Full task list
 mise tasks ls             # Show all available tasks

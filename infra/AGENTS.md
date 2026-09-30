@@ -10,7 +10,7 @@ architecture, module reference, and environment comparison:
   upgrade` against staging/prod** unless the user explicitly asks. Use
   `terraform plan` / `helm template` to validate changes.
 - `dev:*` targets a local kind cluster + LocalStack and is safe to run, but
-  `dev:k8s-up` needs `localstack`, `kind`, `kubectl`, `helm`, and `terraform`.
+  `dev:k8s:up` needs `localstack`, `kind`, `kubectl`, `helm`, and `terraform`.
 
 ## Layout
 
@@ -29,12 +29,12 @@ infra/
 Task scripts live in `mise/tasks/{dev,staging,prod}/`:
 
 ```bash
-mise run dev:infra-up | dev:infra-down      # LocalStack + kind cluster only
-mise run dev:k8s-up | dev:k8s-down          # full env: cluster, terraform, images, helm
-mise run dev:terraform-plan | dev:terraform-apply
+mise run dev:infra:up | dev:infra:down      # LocalStack + kind cluster only
+mise run dev:k8s:up | dev:k8s:down          # full env: cluster, terraform, images, helm
+mise run dev:terraform:plan | dev:terraform:apply
 mise run dev:deploy                         # helm deploy all services to kind
-mise run dev:monitoring-up | dev:monitoring-down
-mise run dev:monitoring-port-forward        # Grafana → localhost:3001
+mise run dev:monitoring:up | dev:monitoring:down
+mise run dev:monitoring:port-forward        # Grafana → localhost:3001
 ```
 
 ## Monitoring (`helm/monitoring/`)

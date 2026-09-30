@@ -224,7 +224,7 @@ check_docker() {
     log "Docker $(docker --version | awk '{print $3}' | tr -d ,) OK"
     return 0
   fi
-  warn "Docker not found. The app can run without it, but 'mise run local:docker-up-api' and integration tests need it."
+  warn "Docker not found. The app can run without it, but 'mise run local:docker:up:api' and integration tests need it."
   warn "  macOS: https://docs.docker.com/desktop/install/mac-install/"
   warn "  Linux: https://docs.docker.com/engine/install/"
 }
@@ -322,9 +322,9 @@ print_next_steps() {
 
   # Start PostgreSQL + the API with Docker (recommended).
   # The first run builds the API image and can take several minutes.
-  mise run local:docker-up-api
-  mise run local:db-migrate
-  mise run local:db-seed        # needs the API from the step above
+  mise run local:docker:up:api
+  mise run local:db:migrate
+  mise run local:db:seed        # needs the API from the step above
 
   # Or run both apps locally without Docker (stop the api container first,
   # it holds port 8000): docker compose stop api

@@ -1,4 +1,4 @@
-// Created by the API seed (`mise run local:db-seed`)
+// Created by the API seed (`mise run local:db:seed`)
 export const TEST_USER = {
 	email: "admin@example.com",
 	password: "admin123456",

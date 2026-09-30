@@ -50,7 +50,7 @@ Do not flatten or merge layers; never import infrastructure from application or 
 ## Database
 
 - Schema: `src/shared/infrastructure/database/schema/`
-- Migrations: `drizzle/migrations/` — generate with `mise run local:db-generate`
+- Migrations: `drizzle/migrations/` — generate with `mise run local:db:generate`
 
 ## Observability
 
