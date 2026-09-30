@@ -258,30 +258,32 @@ Remove it or set INSTALL_DIR to a different path, then re-run."
 }
 
 setup_env_file() {
-  log "Setting up .env..."
-  local src="$INSTALL_DIR/.env.example"
-  local dst="$INSTALL_DIR/.env"
+  log "Setting up app .env files..."
+  local app src dst secret var
+  for app in api web; do
+    src="$INSTALL_DIR/apps/$app/.env.example"
+    dst="$INSTALL_DIR/apps/$app/.env"
 
-  if [ ! -f "$src" ]; then
-    warn ".env.example not found at $src — skipping"
-    return 0
-  fi
-  if [ -f "$dst" ]; then
-    warn ".env already exists — leaving it alone"
-    return 0
-  fi
+    if [ ! -f "$src" ]; then
+      warn "apps/$app/.env.example not found — skipping"
+      continue
+    fi
+    if [ -f "$dst" ]; then
+      warn "apps/$app/.env already exists — leaving it alone"
+      continue
+    fi
 
-  cp "$src" "$dst"
+    cp "$src" "$dst"
 
-  # Auto-generate secrets
-  local secret
-  for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
-    secret="$(openssl rand -base64 48 | tr -d '\n')"
-    sed -i.bak "s|^${var}=.*|${var}=${secret}|" "$dst"
-    rm -f "${dst}.bak"
+    # Auto-generate secrets (only the ones present in this app's template)
+    for var in JWT_ACCESS_SECRET JWT_REFRESH_SECRET AUTH_SECRET; do
+      secret="$(openssl rand -base64 48 | tr -d '\n')"
+      sed -i.bak "s|^${var}=.*|${var}=${secret}|" "$dst"
+      rm -f "${dst}.bak"
+    done
+
+    log "Created apps/$app/.env with auto-generated secrets"
   done
-
-  log "Created $dst with auto-generated secrets"
 }
 
 mise_install_tools() {

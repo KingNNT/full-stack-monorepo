@@ -71,5 +71,5 @@ Never return 500 for expected business errors — map to appropriate 4xx codes.
 ## Environment & Secrets
 
 - All secrets via environment variables — never hardcoded
-- `.env.example` documents required variables — keep updated when adding new ones
+- `apps/api/.env.example` documents required variables — keep updated when adding new ones
 - Test environments: override with test-specific values — never use production secrets in tests
