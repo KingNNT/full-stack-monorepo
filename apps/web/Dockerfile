@@ -4,10 +4,13 @@ WORKDIR /app
 
 RUN npm install -g pnpm@11
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY apps/web/package.json ./apps/web/
 
 RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/web...
+
+# Compose Watch keeps this copy in sync with the host (docker-compose.override.yml)
+COPY apps/web/ ./apps/web/
 
 WORKDIR /app/apps/web
 

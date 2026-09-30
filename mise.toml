@@ -4,8 +4,8 @@ pnpm = "11"
 
 # Short aliases for the most common daily commands
 [tasks.dev]
-description = "Start all apps in dev mode"
-depends = ["local:dev"]
+description = "Start all containers with hot reload"
+depends = ["local:docker:up"]
 
 [tasks.lint]
 description = "Lint all apps"

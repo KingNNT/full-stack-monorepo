@@ -43,7 +43,7 @@ run_banner() {
   make_repo main
   run_banner
   [ "$status" -eq 0 ]
-  [[ "$output" == *"mise run local:docker:up:api"* ]]
+  [[ "$output" == *"mise run local:docker:up"* ]]
   [[ "$output" == *"mise run local:db:migrate"* ]]
   [[ "$output" == *"mise run local:db:seed"* ]]
   [[ "$output" != *"make up"* ]]
