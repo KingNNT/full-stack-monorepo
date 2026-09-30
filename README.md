@@ -88,20 +88,14 @@ for app in api web; do
   done
 done
 
-# Start PostgreSQL + API (first run builds the API image — several minutes)
-mise run local:docker:up:api
+# Start PostgreSQL + API + Web with hot reload (first run builds the images —
+# several minutes). Runs in the foreground; Ctrl+C stops the containers.
+mise run local:docker:up
 
-# Run database migrations
+# In a second terminal: run migrations, then seed RBAC data + default users
+# (registers them through the API, so it must be up)
 mise run local:db:migrate
-
-# Seed RBAC data + default users (registers them through the API, so it must be up)
 mise run local:db:seed
-
-# Start development — stop the api container first, it holds port 8000:
-#   docker compose stop api
-mise run dev       # both apps
-pnpm dev:api       # API only (port 8000)
-pnpm dev:web       # Web only (port 3000)
 
 # API health check (the path is versioned)
 curl http://localhost:8000/v1/health
@@ -155,11 +149,6 @@ mise/tasks/         mise task scripts per environment (local, dev, staging, prod
 ## Commands
 
 ```bash
-# Development
-mise run dev              # Run both apps
-pnpm dev:api              # API only
-pnpm dev:web              # Web only
-
 # Quality
 pnpm build                # Build all
 mise run lint             # Biome lint
@@ -181,7 +170,8 @@ mise run local:db:studio        # Open Drizzle Studio
 mise run local:db:seed          # Seed RBAC data
 
 # Docker
-mise run local:docker:up        # Build and start all services
+mise run local:docker:up        # Build and start all services, hot reload (alias: mise run dev)
+mise run local:docker:up:api    # PostgreSQL + API only, hot reload
 mise run local:docker:down      # Stop all
 mise run local:docker:logs      # Tail logs
 mise run local:docker:clean     # Remove volumes and images — deletes the database

@@ -3,31 +3,47 @@ services:
     ports:
       - "5432:5432"
 
+  # Hot reload uses Compose Watch (`docker compose up --watch`), not bind
+  # mounts: macOS bind mounts don't deliver file-creation events, so the
+  # watchers inside the containers would miss new files.
   api:
     build:
       target: dev
     environment:
       NODE_ENV: development
-      CHOKIDAR_USEPOLLING: "true"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/apps/api/node_modules
-      - /app/apps/web/node_modules
     ports:
       - "${API_PORT:-8000}:${API_PORT:-8000}"
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api
+          target: /app/apps/api
+          ignore:
+            - node_modules/
+            - dist/
+            - package.json
+        - action: rebuild
+          path: ./apps/api/package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
 
   web:
     build:
       target: dev
     environment:
       NODE_ENV: development
-      WATCHPACK_POLLING: "true"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/apps/api/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
     ports:
       - "${WEB_PORT:-3000}:3000"
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/web
+          target: /app/apps/web
+          ignore:
+            - node_modules/
+            - .next/
+            - package.json
+        - action: rebuild
+          path: ./apps/web/package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
