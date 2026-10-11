@@ -21,12 +21,14 @@ async function expectToThrow(promise: Promise<unknown>, expectedName: string) {
 // Mock authApi
 const mockLogin = vi.fn();
 const mockRegister = vi.fn();
+const mockRefresh = vi.fn();
 const mockGetProfile = vi.fn();
 
 vi.mock("@/apis", () => ({
 	authApi: {
 		login: (...args: unknown[]) => mockLogin(...args),
 		register: (...args: unknown[]) => mockRegister(...args),
+		refresh: (...args: unknown[]) => mockRefresh(...args),
 	},
 	userApi: {
 		getProfile: (...args: unknown[]) => mockGetProfile(...args),
@@ -237,5 +239,13 @@ describe("AuthService", () => {
 				serverError,
 			);
 		});
+	});
+});
+
+describe("AuthService.refresh", () => {
+	it("returns the new pair from the API", async () => {
+		mockRefresh.mockResolvedValue(TOKENS);
+		await expect(new AuthService().refresh("refresh")).resolves.toEqual(TOKENS);
+		expect(mockRefresh).toHaveBeenCalledWith("refresh");
 	});
 });

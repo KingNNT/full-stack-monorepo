@@ -44,7 +44,11 @@
 				"passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự"
 			},
 			"noAccount": "Chưa có tài khoản?",
-			"registerLink": "Đăng ký tại đây"
+			"registerLink": "Đăng ký tại đây",
+			"reasons": {
+				"session_expired": "Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.",
+				"password_reset": "Mật khẩu đã được đặt lại. Hãy đăng nhập bằng mật khẩu mới."
+			}
 		},
 		"register": {
 			"title": "Tạo tài khoản",

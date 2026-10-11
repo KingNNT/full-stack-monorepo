@@ -48,4 +48,13 @@ export class AuthApi extends BaseApi {
 	async register(data: IRegisterRequest): Promise<IRegisterData> {
 		return this.post<IRegisterData>(this.buildUrl("/register"), data);
 	}
+
+	/**
+	 * Exchange a refresh token for a new token pair
+	 */
+	async refresh(refreshToken: string): Promise<ILoginData> {
+		return this.post<ILoginData>(this.buildUrl("/refresh"), undefined, {
+			headers: { Authorization: `Bearer ${refreshToken}` },
+		});
+	}
 }

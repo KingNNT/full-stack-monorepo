@@ -7,7 +7,9 @@ export default auth((request) => {
 	const url = request.nextUrl;
 	const pathname = url.pathname;
 	const search = url.search;
-	const isLoggedIn = !!request.auth?.user;
+	// A failed refresh leaves a cookie without usable API tokens: treat it as signed out
+	const sessionExpired = request.auth?.error === "RefreshFailed";
+	const isLoggedIn = !!request.auth?.user && !sessionExpired;
 
 	// Helper function to get preferred locale
 	function getPreferredLocale(): TLocale {
@@ -94,6 +96,7 @@ export default auth((request) => {
 			// Redirect to login page with callback URL
 			const loginUrl = new URL(`/${currentLocale}/login`, request.url);
 			loginUrl.searchParams.set("callback-url", pathname);
+			if (sessionExpired) loginUrl.searchParams.set("reason", "session_expired");
 			return NextResponse.redirect(loginUrl);
 		}
 	}

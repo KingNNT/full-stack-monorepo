@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 // Application handlers
 import { ChangePasswordHandler } from './application/commands/change-password/change-password.handler';
 import { LoginHandler } from './application/commands/login/login.handler';
+import { RefreshTokenHandler } from './application/commands/refresh-token/refresh-token.handler';
 import { RegisterHandler } from './application/commands/register/register.handler';
 import { AuthUserProfileUpdatedHandler } from './application/event-handlers/user-profile-updated.handler';
 import { AUTH_CREDENTIALS_REPOSITORY_TOKEN } from './application/ports/auth-credentials.repository.interface';
@@ -16,12 +17,18 @@ import { JwtStrategy } from './infrastructure/auth/jwt.strategy';
 import { JwtRefreshStrategy } from './infrastructure/auth/jwt-refresh.strategy';
 // Infrastructure
 import { TokenServiceImpl } from './infrastructure/auth/token.service.impl';
+import { TokenVersionValidator } from './infrastructure/auth/token-version.validator';
 import { AuthCredentialsRepository } from './infrastructure/persistence/auth-credentials.repository';
 
 // Presentation
 import { AuthController } from './presentation/controllers/auth.controller';
 
-const CommandHandlers = [LoginHandler, RegisterHandler, ChangePasswordHandler];
+const CommandHandlers = [
+  LoginHandler,
+  RegisterHandler,
+  ChangePasswordHandler,
+  RefreshTokenHandler,
+];
 const EventHandlers = [AuthUserProfileUpdatedHandler];
 
 @Module({
@@ -34,6 +41,7 @@ const EventHandlers = [AuthUserProfileUpdatedHandler];
     BcryptPasswordHasher,
     JwtStrategy,
     JwtRefreshStrategy,
+    TokenVersionValidator,
     AuthCredentialsRepository,
 
     // Port -> Adapter bindings

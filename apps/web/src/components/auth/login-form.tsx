@@ -23,6 +23,9 @@ import { Input } from "@/components/ui/input";
 import type { TAuthErrorCode } from "@/constants";
 import { AUTH_ERROR_CODES, AUTH_ERROR_MESSAGE_IDS } from "@/constants";
 
+const LOGIN_REASONS = ["session_expired", "password_reset"] as const;
+type TLoginReason = (typeof LOGIN_REASONS)[number];
+
 export const LoginForm = () => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -33,6 +36,7 @@ export const LoginForm = () => {
 
 	// Get callback URL from query params (where user was trying to go)
 	const callbackUrl = searchParams.get("callback-url");
+	const reason = searchParams.get("reason");
 
 	const isAuthErrorCode = (code: unknown): code is TAuthErrorCode =>
 		typeof code === "string" && code in AUTH_ERROR_MESSAGE_IDS;
@@ -92,6 +96,11 @@ export const LoginForm = () => {
 				<CardDescription>{t("description")}</CardDescription>
 			</CardHeader>
 			<CardContent>
+				{reason && LOGIN_REASONS.includes(reason as TLoginReason) && (
+					<div role="status" className="mb-4 rounded-md bg-muted p-3 text-muted-foreground text-sm">
+						{t(`reasons.${reason}`)}
+					</div>
+				)}
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 						<FormField

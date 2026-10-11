@@ -154,27 +154,30 @@ describe('Users profile + change-password (e2e)', () => {
       expect(res.status).toBe(401);
     });
 
-    it('204 — changes password (verified via DB hash mutation)', async () => {
+    it('200 — changes password, returns a working pair, revokes the old token', async () => {
       const newPassword = 'brandNewPass99';
-
-      const beforeRows = await db
-        .select()
-        .from(authCredentialsTable)
-        .where(eq(authCredentialsTable.email, initialUser.email));
-      const oldHash = beforeRows[0].passwordHash;
+      const oldToken = accessToken;
 
       const res = await request(app.getHttpServer())
         .post('/api/v1/users/change-password')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ old_password: currentPassword, new_password: newPassword });
 
-      expect(res.status).toBe(204);
+      expect(res.status).toBe(200);
+      expect(typeof res.body.data.access_token).toBe('string');
+      expect(typeof res.body.data.refresh_token).toBe('string');
 
-      const afterRows = await db
-        .select()
-        .from(authCredentialsTable)
-        .where(eq(authCredentialsTable.email, initialUser.email));
-      expect(afterRows[0].passwordHash).not.toBe(oldHash);
+      const revoked = await request(app.getHttpServer())
+        .get('/api/v1/users/profile')
+        .set('Authorization', `Bearer ${oldToken}`);
+      expect(revoked.status).toBe(401);
+      expect(revoked.body.error).toBe('SESSION_REVOKED');
+
+      accessToken = res.body.data.access_token as string;
+      const fresh = await request(app.getHttpServer())
+        .get('/api/v1/users/profile')
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(fresh.status).toBe(200);
 
       currentPassword = newPassword;
     });

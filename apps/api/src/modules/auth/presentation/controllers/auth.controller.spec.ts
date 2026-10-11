@@ -1,8 +1,10 @@
 import { createMockCommandBus } from '../../../../../test/helpers/mocks/command-bus.mock';
 import { LoginCommand } from '../../application/commands/login/login.command';
+import { RefreshTokenCommand } from '../../application/commands/refresh-token/refresh-token.command';
 import { RegisterCommand } from '../../application/commands/register/register.command';
 import { LoginResponseDto } from '../dtos/login.response.dto';
 import { RegisterResponseDto } from '../dtos/register.response.dto';
+import { TokenPairResponseDto } from '../dtos/token-pair.response.dto';
 import { AuthController } from './auth.controller';
 
 describe('AuthController', () => {
@@ -59,6 +61,24 @@ describe('AuthController', () => {
       expect(result).toBeInstanceOf(LoginResponseDto);
       expect(result.accessToken).toBe('access-token');
       expect(result.refreshToken).toBe('refresh-token');
+    });
+  });
+
+  describe('refresh()', () => {
+    it('dispatches RefreshTokenCommand with the token claims', async () => {
+      mockCommandBus.execute.mockResolvedValue({
+        accessToken: 'a2',
+        refreshToken: 'r2',
+      });
+
+      const result = await controller.refresh({ sub: 'u1', tv: 2 });
+
+      const dispatched = mockCommandBus.execute.mock
+        .calls[0][0] as RefreshTokenCommand;
+      expect(dispatched).toBeInstanceOf(RefreshTokenCommand);
+      expect(dispatched).toMatchObject({ userId: 'u1', tokenVersion: 2 });
+      expect(result).toBeInstanceOf(TokenPairResponseDto);
+      expect(result.accessToken).toBe('a2');
     });
   });
 });

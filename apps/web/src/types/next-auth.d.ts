@@ -13,9 +13,17 @@ declare module "next-auth" {
 
 	interface Session {
 		accessToken?: string;
+		error?: "RefreshFailed";
 		user: {
 			id: string;
 			username?: string;
 		} & DefaultSession["user"];
+	}
+}
+
+declare module "next-auth/jwt" {
+	interface JWT {
+		accessTokenExpires?: number;
+		error?: "RefreshFailed";
 	}
 }

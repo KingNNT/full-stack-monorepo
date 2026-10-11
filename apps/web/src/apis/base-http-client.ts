@@ -4,7 +4,7 @@
  */
 
 import ky, { type KyInstance, type Options as KyOptions } from "ky";
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
 import { apiConfig } from "@/configs/api.config";
 import type { ISuccessResponse } from "@/types/api";
 import { HttpStatusError, NetworkError, TimeoutError } from "./errors";
@@ -98,6 +98,15 @@ export class BaseHttpClient {
 						// Handle HTTP errors
 						if (!response.ok) {
 							const errorData = await response.json().catch(() => ({}));
+							// The API revoked this session (password changed or reset elsewhere)
+							if (
+								typeof window !== "undefined" &&
+								response.status === 401 &&
+								(errorData as { error?: string }).error === "SESSION_REVOKED"
+							) {
+								const locale = window.location.pathname.split("/")[1] || "en";
+								await signOut({ callbackUrl: `/${locale}/login?reason=session_expired` });
+							}
 							throw new HttpStatusError(response.status, response.statusText, errorData);
 						}
 						return response;

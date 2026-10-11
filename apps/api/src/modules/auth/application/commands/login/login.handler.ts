@@ -79,7 +79,10 @@ export class LoginHandler implements ICommandHandler<LoginCommand, TokenPair> {
     await this.credentialsRepo.updateLastLogin(credential.userId, new Date());
 
     // 5. Generate JWT tokens
-    const tokens = await this.tokenService.generateTokenPair(credential.userId);
+    const tokens = await this.tokenService.generateTokenPair(
+      credential.userId,
+      credential.tokenVersion,
+    );
 
     this.logger.info({ userId: credential.userId }, 'Login successful');
 

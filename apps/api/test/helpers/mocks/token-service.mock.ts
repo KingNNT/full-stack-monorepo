@@ -6,7 +6,7 @@ export function createMockTokenService(): jest.Mocked<ITokenService> {
       accessToken: 'mock-access-token',
       refreshToken: 'mock-refresh-token',
     }),
-    verifyAccessToken: jest.fn().mockResolvedValue({ sub: 'user-id' }),
-    verifyRefreshToken: jest.fn().mockResolvedValue({ sub: 'user-id' }),
+    verifyAccessToken: jest.fn().mockResolvedValue({ sub: 'user-id', tv: 0 }),
+    verifyRefreshToken: jest.fn().mockResolvedValue({ sub: 'user-id', tv: 0 }),
   };
 }

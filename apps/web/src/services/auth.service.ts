@@ -14,7 +14,7 @@ import {
 	InvalidUsernameException,
 	MissingCredentialsException,
 } from "@/exceptions";
-import type { IAuthenticatedUser, IRegisterData } from "@/types/auth";
+import type { IAuthenticatedUser, ILoginData, IRegisterData } from "@/types/auth";
 
 const PASSWORD_MIN_LENGTH = 8;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
@@ -131,6 +131,14 @@ export class AuthService {
 			}
 			throw error;
 		}
+	}
+
+	/**
+	 * Exchanges a refresh token for a new API token pair
+	 * @throws {HttpStatusError} 401 when the session is revoked or expired
+	 */
+	async refresh(refreshToken: string): Promise<ILoginData> {
+		return authApi.refresh(refreshToken);
 	}
 }
 

@@ -3,9 +3,10 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, type ICommandHandler } from '@nestjs/cqrs';
 import { InjectPinoLogger, type PinoLogger } from 'nestjs-pino';
 import { WeakPasswordError } from '../../../domain/errors/weak-password.error';
+import { PasswordChangedEvent } from '../../../domain/events/password-changed.event';
 import {
   AUTH_CREDENTIALS_REPOSITORY_TOKEN,
   type IAuthCredentialsRepository,
@@ -14,11 +15,16 @@ import {
   type IPasswordHasher,
   PASSWORD_HASHER_TOKEN,
 } from '../../ports/password-hasher.interface';
+import {
+  type ITokenService,
+  TOKEN_SERVICE_TOKEN,
+  type TokenPair,
+} from '../../ports/token.service.interface';
 import { ChangePasswordCommand } from './change-password.command';
 
 @CommandHandler(ChangePasswordCommand)
 export class ChangePasswordHandler
-  implements ICommandHandler<ChangePasswordCommand, void>
+  implements ICommandHandler<ChangePasswordCommand, TokenPair>
 {
   constructor(
     @InjectPinoLogger(ChangePasswordHandler.name)
@@ -27,9 +33,12 @@ export class ChangePasswordHandler
     private readonly credentialsRepo: IAuthCredentialsRepository,
     @Inject(PASSWORD_HASHER_TOKEN)
     private readonly passwordHasher: IPasswordHasher,
+    @Inject(TOKEN_SERVICE_TOKEN)
+    private readonly tokenService: ITokenService,
+    private readonly eventBus: EventBus,
   ) {}
 
-  async execute(command: ChangePasswordCommand): Promise<void> {
+  async execute(command: ChangePasswordCommand): Promise<TokenPair> {
     this.logger.info({ userId: command.userId }, 'Change password attempt');
 
     if (!command.newPassword || command.newPassword.length < 8) {
@@ -66,8 +75,26 @@ export class ChangePasswordHandler
     }
 
     const newHash = await this.passwordHasher.hash(command.newPassword);
-    await this.credentialsRepo.updatePasswordHash(command.userId, newHash);
+    const tokenVersion =
+      await this.credentialsRepo.updatePasswordAndRevokeSessions(
+        command.userId,
+        newHash,
+      );
+    const tokens = await this.tokenService.generateTokenPair(
+      command.userId,
+      tokenVersion,
+    );
 
+    this.eventBus.publish(
+      new PasswordChangedEvent(
+        command.userId,
+        credential.email,
+        command.locale,
+        'change',
+      ),
+    );
     this.logger.info({ userId: command.userId }, 'Password changed');
+
+    return tokens;
   }
 }

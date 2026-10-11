@@ -203,4 +203,33 @@ describe('AuthCredentialsRepository (integration)', () => {
       ),
     ).rejects.toThrow();
   });
+
+  it('new credentials start at token_version 0', async () => {
+    const userId = randomUUID();
+    await repository.create(userId, 'tv@example.com', 'tvuser', 'hash-1');
+
+    const record = await repository.findByUserId(userId);
+
+    expect(record?.tokenVersion).toBe(0);
+  });
+
+  it('updatePasswordAndRevokeSessions() replaces the hash and bumps token_version', async () => {
+    const userId = randomUUID();
+    await repository.create(userId, 'bump@example.com', 'bumpuser', 'hash-1');
+
+    const first = await repository.updatePasswordAndRevokeSessions(
+      userId,
+      'hash-2',
+    );
+    const second = await repository.updatePasswordAndRevokeSessions(
+      userId,
+      'hash-3',
+    );
+
+    expect(first).toBe(1);
+    expect(second).toBe(2);
+    const record = await repository.findByUserId(userId);
+    expect(record?.passwordHash).toBe('hash-3');
+    expect(record?.tokenVersion).toBe(2);
+  });
 });

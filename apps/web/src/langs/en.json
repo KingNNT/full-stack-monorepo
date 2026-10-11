@@ -44,7 +44,11 @@
 				"passwordMinLength": "Password must be at least 8 characters"
 			},
 			"noAccount": "Don't have an account?",
-			"registerLink": "Register here"
+			"registerLink": "Register here",
+			"reasons": {
+				"session_expired": "Your session has ended. Please sign in again.",
+				"password_reset": "Your password has been reset. Sign in with your new password."
+			}
 		},
 		"register": {
 			"title": "Create Account",

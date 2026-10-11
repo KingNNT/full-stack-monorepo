@@ -1,5 +1,6 @@
 import {
   boolean,
+  integer,
   pgTable,
   timestamp,
   uuid,
@@ -13,6 +14,7 @@ export const authCredentialsTable = pgTable('auth_credentials', {
   username: varchar('username', { length: 30 }).notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   isActive: boolean('is_active').notNull().default(true),
+  tokenVersion: integer('token_version').notNull().default(0),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true, mode: 'date' }),
   ...auditColumns,
 });

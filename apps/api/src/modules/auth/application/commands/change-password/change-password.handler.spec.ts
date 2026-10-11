@@ -1,11 +1,15 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { createAuthCredentialRecord } from '../../../../../../test/helpers/factories/auth.factory';
 import { createMockAuthCredentialsRepository } from '../../../../../../test/helpers/mocks/auth-credentials.mock';
+import { createMockEventBus } from '../../../../../../test/helpers/mocks/event-bus.mock';
 import { createMockPinoLogger } from '../../../../../../test/helpers/mocks/logger.mock';
 import { createMockPasswordHasher } from '../../../../../../test/helpers/mocks/password-hasher.mock';
+import { createMockTokenService } from '../../../../../../test/helpers/mocks/token-service.mock';
 import { WeakPasswordError } from '../../../domain/errors/weak-password.error';
+import { PasswordChangedEvent } from '../../../domain/events/password-changed.event';
 import type { IAuthCredentialsRepository } from '../../ports/auth-credentials.repository.interface';
 import type { IPasswordHasher } from '../../ports/password-hasher.interface';
+import type { ITokenService } from '../../ports/token.service.interface';
 import { ChangePasswordCommand } from './change-password.command';
 import { ChangePasswordHandler } from './change-password.handler';
 
@@ -13,41 +17,72 @@ describe('ChangePasswordHandler', () => {
   let handler: ChangePasswordHandler;
   let mockCredentials: jest.Mocked<IAuthCredentialsRepository>;
   let mockHasher: jest.Mocked<IPasswordHasher>;
+  let mockTokenService: jest.Mocked<ITokenService>;
+  let mockEventBus: ReturnType<typeof createMockEventBus>;
 
   beforeEach(() => {
     mockCredentials = createMockAuthCredentialsRepository();
     mockHasher = createMockPasswordHasher();
+    mockTokenService = createMockTokenService();
+    mockEventBus = createMockEventBus();
 
     handler = new ChangePasswordHandler(
       createMockPinoLogger() as any,
       mockCredentials,
       mockHasher,
+      mockTokenService,
+      mockEventBus as any,
     );
   });
 
-  it('hashes new password and updates credentials', async () => {
+  it('stores the new hash, revokes sessions and returns a pair for the new version', async () => {
     mockCredentials.findByUserId.mockResolvedValue(
       createAuthCredentialRecord({ userId: 'user-1' }),
     );
     mockHasher.verify.mockResolvedValue(true);
     mockHasher.hash.mockResolvedValue('new-hash');
+    mockCredentials.updatePasswordAndRevokeSessions.mockResolvedValue(5);
 
-    await handler.execute(
+    const result = await handler.execute(
       new ChangePasswordCommand('user-1', 'oldPass1', 'newPassword1'),
     );
 
-    expect(mockHasher.hash).toHaveBeenCalledWith('newPassword1');
-    expect(mockCredentials.updatePasswordHash).toHaveBeenCalledWith(
+    expect(
+      mockCredentials.updatePasswordAndRevokeSessions,
+    ).toHaveBeenCalledWith('user-1', 'new-hash');
+    expect(mockTokenService.generateTokenPair).toHaveBeenCalledWith(
       'user-1',
-      'new-hash',
+      5,
     );
+    expect(result.accessToken).toBe('mock-access-token');
+  });
+
+  it('publishes PasswordChangedEvent with the request locale', async () => {
+    mockCredentials.findByUserId.mockResolvedValue(
+      createAuthCredentialRecord({ userId: 'user-1', email: 'a@example.com' }),
+    );
+
+    await handler.execute(
+      new ChangePasswordCommand('user-1', 'oldPass1', 'newPassword1', 'vi'),
+    );
+
+    const event = mockEventBus.publish.mock.calls[0][0] as PasswordChangedEvent;
+    expect(event).toBeInstanceOf(PasswordChangedEvent);
+    expect(event).toMatchObject({
+      userId: 'user-1',
+      email: 'a@example.com',
+      locale: 'vi',
+      method: 'change',
+    });
   });
 
   it('throws WeakPasswordError when new password too short', async () => {
     await expect(
       handler.execute(new ChangePasswordCommand('user-1', 'oldPass1', 'short')),
     ).rejects.toThrow(WeakPasswordError);
-    expect(mockCredentials.updatePasswordHash).not.toHaveBeenCalled();
+    expect(
+      mockCredentials.updatePasswordAndRevokeSessions,
+    ).not.toHaveBeenCalled();
   });
 
   it('rejects when new password equals old password', async () => {
@@ -79,7 +114,9 @@ describe('ChangePasswordHandler', () => {
         new ChangePasswordCommand('user-1', 'wrongOld', 'newPassword1'),
       ),
     ).rejects.toThrow(UnauthorizedException);
-    expect(mockCredentials.updatePasswordHash).not.toHaveBeenCalled();
+    expect(
+      mockCredentials.updatePasswordAndRevokeSessions,
+    ).not.toHaveBeenCalled();
   });
 
   it('does not update password on verification failure', async () => {

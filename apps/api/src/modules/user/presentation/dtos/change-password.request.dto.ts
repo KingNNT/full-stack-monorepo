@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import {
+  type Locale,
+  SUPPORTED_LOCALES,
+} from '../../../../shared/domain/locale';
 
 export class ChangePasswordRequestDto {
   @ApiProperty({ description: 'Current password' })
@@ -14,4 +25,9 @@ export class ChangePasswordRequestDto {
   @MinLength(8)
   @MaxLength(128)
   new_password!: string;
+
+  @ApiProperty({ required: false, enum: SUPPORTED_LOCALES, default: 'en' })
+  @IsOptional()
+  @IsIn(SUPPORTED_LOCALES)
+  locale?: Locale;
 }
