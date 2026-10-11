@@ -2,6 +2,8 @@ import { createMockCommandBus } from '../../../../../test/helpers/mocks/command-
 import { LoginCommand } from '../../application/commands/login/login.command';
 import { RefreshTokenCommand } from '../../application/commands/refresh-token/refresh-token.command';
 import { RegisterCommand } from '../../application/commands/register/register.command';
+import { RequestPasswordResetCommand } from '../../application/commands/request-password-reset/request-password-reset.command';
+import { ResetPasswordCommand } from '../../application/commands/reset-password/reset-password.command';
 import { LoginResponseDto } from '../dtos/login.response.dto';
 import { RegisterResponseDto } from '../dtos/register.response.dto';
 import { TokenPairResponseDto } from '../dtos/token-pair.response.dto';
@@ -79,6 +81,40 @@ describe('AuthController', () => {
       expect(dispatched).toMatchObject({ userId: 'u1', tokenVersion: 2 });
       expect(result).toBeInstanceOf(TokenPairResponseDto);
       expect(result.accessToken).toBe('a2');
+    });
+  });
+
+  describe('forgotPassword()', () => {
+    it('dispatches RequestPasswordResetCommand and returns an empty object', async () => {
+      const result = await controller.forgotPassword({
+        email: 'a@example.com',
+      });
+
+      const dispatched = mockCommandBus.execute.mock.calls[0][0];
+      expect(dispatched).toBeInstanceOf(RequestPasswordResetCommand);
+      expect(dispatched).toMatchObject({
+        email: 'a@example.com',
+        locale: 'en',
+      });
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('resetPassword()', () => {
+    it('dispatches ResetPasswordCommand', async () => {
+      await controller.resetPassword({
+        token: 't',
+        new_password: 'newPassword1',
+        locale: 'vi',
+      });
+
+      const dispatched = mockCommandBus.execute.mock.calls[0][0];
+      expect(dispatched).toBeInstanceOf(ResetPasswordCommand);
+      expect(dispatched).toMatchObject({
+        token: 't',
+        newPassword: 'newPassword1',
+        locale: 'vi',
+      });
     });
   });
 });

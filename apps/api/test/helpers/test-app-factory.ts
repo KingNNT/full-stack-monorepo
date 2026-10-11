@@ -4,6 +4,10 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
+import {
+  type IMailSender,
+  MAIL_SENDER_TOKEN,
+} from '../../src/shared/application/ports/mail.interface';
 import { DrizzleService } from '../../src/shared/infrastructure/database/drizzle.service';
 import * as schema from '../../src/shared/infrastructure/database/schema/index';
 
@@ -11,6 +15,7 @@ let testSql: postgres.Sql | null = null;
 
 export async function createTestApp(
   envOverrides: Record<string, string>,
+  options: { mailSender?: IMailSender } = {},
 ): Promise<INestApplication> {
   // Ensure NODE_ENV=test so ConfigModule loads .env.test
   process.env.NODE_ENV = 'test';
@@ -30,7 +35,7 @@ export async function createTestApp(
   testSql = postgres(envOverrides.DATABASE_URL);
   const testDb = drizzle(testSql, { schema });
 
-  const moduleRef = await Test.createTestingModule({
+  let builder = Test.createTestingModule({
     imports: [AppModule],
   })
     .overrideProvider(DrizzleService)
@@ -43,8 +48,13 @@ export async function createTestApp(
         await testSql?.end();
         testSql = null;
       },
-    })
-    .compile();
+    });
+  if (options.mailSender) {
+    builder = builder
+      .overrideProvider(MAIL_SENDER_TOKEN)
+      .useValue(options.mailSender);
+  }
+  const moduleRef = await builder.compile();
 
   const app = moduleRef.createNestApplication();
 

@@ -4,6 +4,7 @@ import postgres from 'postgres';
 import { authCredentialsTable } from '../../src/shared/infrastructure/database/schema/auth-credentials.table';
 import { domainEventsTable } from '../../src/shared/infrastructure/database/schema/domain-events.table';
 import * as schema from '../../src/shared/infrastructure/database/schema/index';
+import { passwordResetTokensTable } from '../../src/shared/infrastructure/database/schema/password-reset-tokens.table';
 import { usersTable } from '../../src/shared/infrastructure/database/schema/users.table';
 
 export type TestDrizzleDb = PostgresJsDatabase<typeof schema>;
@@ -37,6 +38,7 @@ export async function setupDrizzleForTests(
 export async function cleanDatabase(client?: TestDrizzleDb): Promise<void> {
   const target = client ?? db;
   // Delete in dependency-safe order (auth_credentials may reference users)
+  await target.delete(passwordResetTokensTable);
   await target.delete(authCredentialsTable);
   await target.delete(usersTable);
   await target.delete(domainEventsTable);

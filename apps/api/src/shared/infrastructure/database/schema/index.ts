@@ -20,6 +20,10 @@ export {
   type NewModelHasRoleRow,
 } from './model-has-roles.table';
 export {
+  type PasswordResetTokenRow,
+  passwordResetTokensTable,
+} from './password-reset-tokens.table';
+export {
   type NewPermissionRow,
   type PermissionRow,
   permissionsTable,

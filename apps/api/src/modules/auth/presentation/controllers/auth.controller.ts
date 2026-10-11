@@ -20,22 +20,28 @@ import type { LoginResult } from '../../application/commands/login/login.result'
 import { RefreshTokenCommand } from '../../application/commands/refresh-token/refresh-token.command';
 import { RegisterCommand } from '../../application/commands/register/register.command';
 import type { RegisterResult } from '../../application/commands/register/register.result';
+import { RequestPasswordResetCommand } from '../../application/commands/request-password-reset/request-password-reset.command';
+import { ResetPasswordCommand } from '../../application/commands/reset-password/reset-password.command';
 import type {
   JwtPayload,
   TokenPair,
 } from '../../application/ports/token.service.interface';
+import { ForgotPasswordRequestDto } from '../dtos/forgot-password.request.dto';
 import { LoginRequestDto } from '../dtos/login.request.dto';
 import { LoginResponseDto } from '../dtos/login.response.dto';
 import { RegisterRequestDto } from '../dtos/register.request.dto';
 import { RegisterResponseDto } from '../dtos/register.response.dto';
+import { ResetPasswordRequestDto } from '../dtos/reset-password.request.dto';
 import { TokenPairResponseDto } from '../dtos/token-pair.response.dto';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
+
+const THROTTLE_OFF = process.env.THROTTLE_DISABLED === 'true';
 
 @ApiTags('Auth')
 @Throttle({
   default: {
     ttl: 60000,
-    limit: process.env.THROTTLE_DISABLED === 'true' ? 100_000 : 5,
+    limit: THROTTLE_OFF ? 100_000 : 5,
   },
 })
 @Controller('auth')
@@ -87,5 +93,40 @@ export class AuthController {
       new RefreshTokenCommand(user.sub, user.tv),
     );
     return TokenPairResponseDto.from(pair);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle({ default: { ttl: 60000, limit: THROTTLE_OFF ? 100_000 : 3 } })
+  @ApiOperation({
+    summary:
+      'Email a password reset link; always 202 so emails are not disclosed',
+  })
+  @ApiResponse({ status: 202 })
+  async forgotPassword(
+    @Body() dto: ForgotPasswordRequestDto,
+  ): Promise<Record<string, never>> {
+    await this.commandBus.execute(
+      new RequestPasswordResetCommand(dto.email, dto.locale ?? 'en'),
+    );
+    return {};
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: THROTTLE_OFF ? 100_000 : 5 } })
+  @ApiOperation({ summary: 'Set a new password with a reset token' })
+  @ApiResponse({ status: 200 })
+  @ApiResponse({
+    status: 400,
+    description: 'INVALID_RESET_TOKEN or WEAK_PASSWORD',
+  })
+  async resetPassword(
+    @Body() dto: ResetPasswordRequestDto,
+  ): Promise<Record<string, never>> {
+    await this.commandBus.execute(
+      new ResetPasswordCommand(dto.token, dto.new_password, dto.locale ?? 'en'),
+    );
+    return {};
   }
 }
