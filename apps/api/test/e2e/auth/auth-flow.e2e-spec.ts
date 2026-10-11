@@ -40,7 +40,7 @@ describe('Auth flow (e2e)', () => {
   it('register then login with email', async () => {
     // Register
     const registerRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         email: 'flow@example.com',
         username: 'flowuser',
@@ -52,7 +52,7 @@ describe('Auth flow (e2e)', () => {
 
     // Login with email
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({
         identifier: 'flow@example.com',
         password: 'securePass123',
@@ -65,7 +65,7 @@ describe('Auth flow (e2e)', () => {
 
   it('register then login with username', async () => {
     // Register
-    await request(app.getHttpServer()).post('/auth/register').send({
+    await request(app.getHttpServer()).post('/api/v1/auth/register').send({
       email: 'flow2@example.com',
       username: 'flow2user',
       password: 'securePass123',
@@ -73,7 +73,7 @@ describe('Auth flow (e2e)', () => {
 
     // Login with username
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({
         identifier: 'flow2user',
         password: 'securePass123',
@@ -84,7 +84,7 @@ describe('Auth flow (e2e)', () => {
   });
 
   it('register then login with email then login with username', async () => {
-    await request(app.getHttpServer()).post('/auth/register').send({
+    await request(app.getHttpServer()).post('/api/v1/auth/register').send({
       email: 'multi@example.com',
       username: 'multiuser',
       password: 'securePass123',
@@ -92,7 +92,7 @@ describe('Auth flow (e2e)', () => {
 
     // Login via email
     const loginEmail = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({
         identifier: 'multi@example.com',
         password: 'securePass123',
@@ -101,7 +101,7 @@ describe('Auth flow (e2e)', () => {
 
     // Login via username
     const loginUsername = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({
         identifier: 'multiuser',
         password: 'securePass123',

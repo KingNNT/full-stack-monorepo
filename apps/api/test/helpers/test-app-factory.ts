@@ -1,13 +1,9 @@
-import {
-  ClassSerializerInterceptor,
-  type INestApplication,
-  ValidationPipe,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { AppModule } from '../../src/app.module';
+import { configureApp } from '../../src/app.setup';
 import { DrizzleService } from '../../src/shared/infrastructure/database/drizzle.service';
 import * as schema from '../../src/shared/infrastructure/database/schema/index';
 
@@ -52,15 +48,7 @@ export async function createTestApp(
 
   const app = moduleRef.createNestApplication();
 
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  configureApp(app);
 
   await app.init();
   return app;

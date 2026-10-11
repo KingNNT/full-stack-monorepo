@@ -41,11 +41,13 @@ describe('POST /auth/register (e2e)', () => {
   });
 
   it('201 — registers with valid data', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'newuser@example.com',
-      username: 'newuser',
-      password: 'securePass123',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'newuser@example.com',
+        username: 'newuser',
+        password: 'securePass123',
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.data.user_id).toBeDefined();
@@ -53,11 +55,13 @@ describe('POST /auth/register (e2e)', () => {
   });
 
   it('user is stored in users table', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'dbcheck@example.com',
-      username: 'dbcheck',
-      password: 'securePass123',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'dbcheck@example.com',
+        username: 'dbcheck',
+        password: 'securePass123',
+      });
 
     const results = await db
       .select()
@@ -69,11 +73,13 @@ describe('POST /auth/register (e2e)', () => {
   });
 
   it('credentials are stored in auth_credentials table', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'credcheck@example.com',
-      username: 'credcheck',
-      password: 'securePass123',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'credcheck@example.com',
+        username: 'credcheck',
+        password: 'securePass123',
+      });
 
     const results = await db
       .select()
@@ -86,72 +92,84 @@ describe('POST /auth/register (e2e)', () => {
   });
 
   it('400 — rejects invalid email', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'not-an-email',
-      username: 'validuser',
-      password: 'securePass123',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'not-an-email',
+        username: 'validuser',
+        password: 'securePass123',
+      });
 
     expect(res.status).toBe(400);
   });
 
   it('400 — rejects short password', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'test@example.com',
-      username: 'testuser',
-      password: 'short',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'test@example.com',
+        username: 'testuser',
+        password: 'short',
+      });
 
     expect(res.status).toBe(400);
   });
 
   it('400 — rejects missing fields', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'test@example.com',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'test@example.com',
+      });
 
     expect(res.status).toBe(400);
   });
 
   it('400 — rejects extra fields (forbidNonWhitelisted)', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'test@example.com',
-      username: 'testuser',
-      password: 'securePass123',
-      extraField: 'not-allowed',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'test@example.com',
+        username: 'testuser',
+        password: 'securePass123',
+        extraField: 'not-allowed',
+      });
 
     expect(res.status).toBe(400);
   });
 
   it('error on duplicate email', async () => {
-    await request(app.getHttpServer()).post('/auth/register').send({
+    await request(app.getHttpServer()).post('/api/v1/auth/register').send({
       email: 'dup@example.com',
       username: 'first',
       password: 'securePass123',
     });
 
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'dup@example.com',
-      username: 'second',
-      password: 'securePass123',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'dup@example.com',
+        username: 'second',
+        password: 'securePass123',
+      });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
   it('error on duplicate username', async () => {
-    await request(app.getHttpServer()).post('/auth/register').send({
+    await request(app.getHttpServer()).post('/api/v1/auth/register').send({
       email: 'first@example.com',
       username: 'sameuser',
       password: 'securePass123',
     });
 
-    const res = await request(app.getHttpServer()).post('/auth/register').send({
-      email: 'second@example.com',
-      username: 'sameuser',
-      password: 'securePass123',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: 'second@example.com',
+        username: 'sameuser',
+        password: 'securePass123',
+      });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
