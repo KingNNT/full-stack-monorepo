@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpStatusError } from "@/apis/errors";
+import { LocaleSupport } from "@/enums";
 import { AuthService } from "@/services/auth.service";
 
 /**
@@ -23,15 +24,21 @@ const mockLogin = vi.fn();
 const mockRegister = vi.fn();
 const mockRefresh = vi.fn();
 const mockGetProfile = vi.fn();
+const mockForgotPassword = vi.fn();
+const mockResetPassword = vi.fn();
+const mockChangePassword = vi.fn();
 
 vi.mock("@/apis", () => ({
 	authApi: {
 		login: (...args: unknown[]) => mockLogin(...args),
 		register: (...args: unknown[]) => mockRegister(...args),
 		refresh: (...args: unknown[]) => mockRefresh(...args),
+		forgotPassword: (...args: unknown[]) => mockForgotPassword(...args),
+		resetPassword: (...args: unknown[]) => mockResetPassword(...args),
 	},
 	userApi: {
 		getProfile: (...args: unknown[]) => mockGetProfile(...args),
+		changePassword: (...args: unknown[]) => mockChangePassword(...args),
 	},
 }));
 
@@ -247,5 +254,45 @@ describe("AuthService.refresh", () => {
 		mockRefresh.mockResolvedValue(TOKENS);
 		await expect(new AuthService().refresh("refresh")).resolves.toEqual(TOKENS);
 		expect(mockRefresh).toHaveBeenCalledWith("refresh");
+	});
+});
+
+describe("AuthService password flows", () => {
+	const service = new AuthService();
+
+	beforeEach(() => vi.clearAllMocks());
+
+	it("forwards a normalized email and locale for forgot-password", async () => {
+		mockForgotPassword.mockResolvedValue({});
+		await service.forgotPassword("  Alice@Example.com ", LocaleSupport.VI);
+		expect(mockForgotPassword).toHaveBeenCalledWith({
+			email: "alice@example.com",
+			locale: LocaleSupport.VI,
+		});
+	});
+
+	it("rejects an invalid email before calling the API", async () => {
+		await expectToThrow(service.forgotPassword("nope", LocaleSupport.EN), "InvalidEmailException");
+		expect(mockForgotPassword).not.toHaveBeenCalled();
+	});
+
+	it("rejects a short password on reset before calling the API", async () => {
+		await expectToThrow(
+			service.resetPassword("t", "short", LocaleSupport.EN),
+			"InvalidPasswordException",
+		);
+		expect(mockResetPassword).not.toHaveBeenCalled();
+	});
+
+	it("changes the password with the caller's access token and returns the new pair", async () => {
+		mockChangePassword.mockResolvedValue(TOKENS);
+
+		await expect(
+			service.changePassword("access", "oldPass12", "newPass12", LocaleSupport.EN),
+		).resolves.toEqual(TOKENS);
+		expect(mockChangePassword).toHaveBeenCalledWith(
+			{ old_password: "oldPass12", new_password: "newPass12", locale: LocaleSupport.EN },
+			{ headers: { Authorization: "Bearer access" } },
+		);
 	});
 });

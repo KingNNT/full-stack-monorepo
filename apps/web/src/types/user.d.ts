@@ -1,3 +1,5 @@
+import type { TLocale } from "@/i18n/config";
+
 export interface IUser {
 	id: string;
 	email: string;
@@ -18,4 +20,5 @@ export interface IUpdateProfileRequest {
 export interface IChangePasswordRequest {
 	old_password: string;
 	new_password: string;
+	locale?: TLocale;
 }

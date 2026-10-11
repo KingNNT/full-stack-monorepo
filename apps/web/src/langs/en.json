@@ -48,7 +48,8 @@
 			"reasons": {
 				"session_expired": "Your session has ended. Please sign in again.",
 				"password_reset": "Your password has been reset. Sign in with your new password."
-			}
+			},
+			"forgotPassword": "Forgot password?"
 		},
 		"register": {
 			"title": "Create Account",
@@ -79,6 +80,53 @@
 			"title": "Dashboard",
 			"description": "Your personal dashboard",
 			"welcome": "Welcome to Dashboard"
+		},
+		"forgotPassword": {
+			"title": "Forgot password",
+			"description": "Enter your email and we will send you a link to reset your password.",
+			"email": "Email",
+			"submit": "Send reset link",
+			"resendIn": "Resend in {seconds}s",
+			"sent": "If an account exists for that email, a reset link has been sent. Check your inbox.",
+			"backToLogin": "Back to sign in",
+			"validation": {
+				"invalidEmail": "Invalid email address"
+			}
+		},
+		"resetPassword": {
+			"title": "Set a new password",
+			"description": "Choose a new password for your account.",
+			"password": "New password",
+			"confirmPassword": "Confirm new password",
+			"submit": "Reset password",
+			"submitting": "Resetting...",
+			"invalidToken": "This reset link is invalid or has expired.",
+			"requestNew": "Request a new link",
+			"generalError": "An error occurred. Please try again.",
+			"validation": {
+				"passwordMinLength": "Password must be at least 8 characters",
+				"passwordMaxLength": "Password must be at most 128 characters",
+				"passwordsNotMatch": "Passwords do not match"
+			}
+		},
+		"settingsSecurity": {
+			"title": "Security",
+			"description": "Change your password. Other devices will be signed out.",
+			"currentPassword": "Current password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"submit": "Change password",
+			"submitting": "Saving...",
+			"success": "Password changed. Other sessions have been signed out.",
+			"invalidCurrentPassword": "Current password is incorrect.",
+			"generalError": "An error occurred. Please try again.",
+			"validation": {
+				"required": "Required",
+				"passwordMinLength": "Password must be at least 8 characters",
+				"passwordMaxLength": "Password must be at most 128 characters",
+				"passwordsNotMatch": "Passwords do not match",
+				"sameAsCurrent": "New password must differ from the current one"
+			}
 		}
 	}
 }

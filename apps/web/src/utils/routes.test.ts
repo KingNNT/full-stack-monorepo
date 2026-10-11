@@ -12,6 +12,7 @@ describe("isPrivateRoute", () => {
 	it("returns true for private route sub-paths", () => {
 		expect(isPrivateRoute("/dashboard/analytics")).toBe(true);
 		expect(isPrivateRoute("/settings/profile")).toBe(true);
+		expect(isPrivateRoute("/settings/security")).toBe(true);
 	});
 
 	it("returns false for explicit public routes", () => {
@@ -19,6 +20,7 @@ describe("isPrivateRoute", () => {
 		expect(isPrivateRoute("/login")).toBe(false);
 		expect(isPrivateRoute("/register")).toBe(false);
 		expect(isPrivateRoute("/forgot-password")).toBe(false);
+		expect(isPrivateRoute("/reset-password")).toBe(false);
 	});
 
 	it("returns false for public route sub-paths", () => {

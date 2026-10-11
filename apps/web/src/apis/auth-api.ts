@@ -3,7 +3,14 @@
  * Authentication endpoints
  */
 
-import type { ILoginData, ILoginRequest, IRegisterData, IRegisterRequest } from "@/types/auth";
+import type {
+	IForgotPasswordRequest,
+	ILoginData,
+	ILoginRequest,
+	IRegisterData,
+	IRegisterRequest,
+	IResetPasswordRequest,
+} from "@/types/auth";
 import { BaseApi } from "./base-api";
 
 /**
@@ -56,5 +63,15 @@ export class AuthApi extends BaseApi {
 		return this.post<ILoginData>(this.buildUrl("/refresh"), undefined, {
 			headers: { Authorization: `Bearer ${refreshToken}` },
 		});
+	}
+
+	/** Request a reset link; the API answers the same for unknown emails */
+	async forgotPassword(data: IForgotPasswordRequest): Promise<Record<string, never>> {
+		return this.post<Record<string, never>>(this.buildUrl("/forgot-password"), data);
+	}
+
+	/** Set a new password with the token from the reset link */
+	async resetPassword(data: IResetPasswordRequest): Promise<Record<string, never>> {
+		return this.post<Record<string, never>>(this.buildUrl("/reset-password"), data);
 	}
 }

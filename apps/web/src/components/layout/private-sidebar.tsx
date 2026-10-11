@@ -32,7 +32,7 @@ export const PrivateSidebar = ({ isOpen = true, onClose }: IPrivateSidebarProps)
 		{
 			icon: Settings,
 			label: t("settings"),
-			href: `/${locale}/settings`,
+			href: `/${locale}/settings/security`,
 		},
 	];
 

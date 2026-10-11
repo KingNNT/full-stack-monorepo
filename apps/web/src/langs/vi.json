@@ -48,7 +48,8 @@
 			"reasons": {
 				"session_expired": "Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.",
 				"password_reset": "Mật khẩu đã được đặt lại. Hãy đăng nhập bằng mật khẩu mới."
-			}
+			},
+			"forgotPassword": "Quên mật khẩu?"
 		},
 		"register": {
 			"title": "Tạo tài khoản",
@@ -79,6 +80,53 @@
 			"title": "Bảng điều khiển",
 			"description": "Bảng điều khiển cá nhân của bạn",
 			"welcome": "Chào mừng đến với Bảng điều khiển"
+		},
+		"forgotPassword": {
+			"title": "Quên mật khẩu",
+			"description": "Nhập email, chúng tôi sẽ gửi link để đặt lại mật khẩu.",
+			"email": "Email",
+			"submit": "Gửi link đặt lại",
+			"resendIn": "Gửi lại sau {seconds}s",
+			"sent": "Nếu email này có tài khoản, chúng tôi đã gửi link đặt lại. Hãy kiểm tra hộp thư.",
+			"backToLogin": "Quay lại đăng nhập",
+			"validation": {
+				"invalidEmail": "Email không hợp lệ"
+			}
+		},
+		"resetPassword": {
+			"title": "Đặt mật khẩu mới",
+			"description": "Chọn mật khẩu mới cho tài khoản của bạn.",
+			"password": "Mật khẩu mới",
+			"confirmPassword": "Xác nhận mật khẩu mới",
+			"submit": "Đặt lại mật khẩu",
+			"submitting": "Đang đặt lại...",
+			"invalidToken": "Link đặt lại không hợp lệ hoặc đã hết hạn.",
+			"requestNew": "Yêu cầu link mới",
+			"generalError": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+			"validation": {
+				"passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự",
+				"passwordMaxLength": "Mật khẩu tối đa 128 ký tự",
+				"passwordsNotMatch": "Mật khẩu không khớp"
+			}
+		},
+		"settingsSecurity": {
+			"title": "Bảo mật",
+			"description": "Đổi mật khẩu. Các thiết bị khác sẽ bị đăng xuất.",
+			"currentPassword": "Mật khẩu hiện tại",
+			"newPassword": "Mật khẩu mới",
+			"confirmPassword": "Xác nhận mật khẩu mới",
+			"submit": "Đổi mật khẩu",
+			"submitting": "Đang lưu...",
+			"success": "Đã đổi mật khẩu. Các phiên khác đã bị đăng xuất.",
+			"invalidCurrentPassword": "Mật khẩu hiện tại không đúng.",
+			"generalError": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+			"validation": {
+				"required": "Bắt buộc",
+				"passwordMinLength": "Mật khẩu phải có ít nhất 8 ký tự",
+				"passwordMaxLength": "Mật khẩu tối đa 128 ký tự",
+				"passwordsNotMatch": "Mật khẩu không khớp",
+				"sameAsCurrent": "Mật khẩu mới phải khác mật khẩu hiện tại"
+			}
 		}
 	}
 }

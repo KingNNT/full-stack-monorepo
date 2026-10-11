@@ -140,6 +140,12 @@ export const LoginForm = () => {
 							)}
 						/>
 
+						<div className="text-right text-sm">
+							<Link href={`/${locale}/forgot-password`} className="text-primary hover:underline">
+								{t("forgotPassword")}
+							</Link>
+						</div>
+
 						{error && (
 							<div className="rounded-md bg-red-50 p-3 text-red-500 text-sm dark:bg-red-950">
 								{error}

@@ -14,6 +14,7 @@ import {
 	InvalidUsernameException,
 	MissingCredentialsException,
 } from "@/exceptions";
+import type { TLocale } from "@/i18n/config";
 import type { IAuthenticatedUser, ILoginData, IRegisterData } from "@/types/auth";
 
 const PASSWORD_MIN_LENGTH = 8;
@@ -139,6 +140,49 @@ export class AuthService {
 	 */
 	async refresh(refreshToken: string): Promise<ILoginData> {
 		return authApi.refresh(refreshToken);
+	}
+
+	/**
+	 * Requests a password reset email
+	 * @throws {InvalidEmailException} If the email format is invalid
+	 */
+	async forgotPassword(email: string, locale: TLocale): Promise<void> {
+		const normalized = email.trim().toLowerCase();
+		if (!this.validateEmailFormat(normalized)) {
+			throw new InvalidEmailException("Invalid email format");
+		}
+		await authApi.forgotPassword({ email: normalized, locale });
+	}
+
+	/**
+	 * Sets a new password with a reset token
+	 * @throws {InvalidPasswordException} If the password is too short
+	 * @throws {HttpStatusError} 400 INVALID_RESET_TOKEN, forwarded by the route handler
+	 */
+	async resetPassword(token: string, password: string, locale: TLocale): Promise<void> {
+		if (!this.validatePasswordFormat(password)) {
+			throw new InvalidPasswordException("Password must be at least 8 characters");
+		}
+		await authApi.resetPassword({ token, new_password: password, locale });
+	}
+
+	/**
+	 * Changes the password of the signed-in user
+	 * @returns The new API token pair for the current session
+	 */
+	async changePassword(
+		accessToken: string,
+		oldPassword: string,
+		newPassword: string,
+		locale: TLocale,
+	): Promise<ILoginData> {
+		if (!this.validatePasswordFormat(newPassword)) {
+			throw new InvalidPasswordException("Password must be at least 8 characters");
+		}
+		return userApi.changePassword(
+			{ old_password: oldPassword, new_password: newPassword, locale },
+			{ headers: { Authorization: `Bearer ${accessToken}` } },
+		);
 	}
 }
 
