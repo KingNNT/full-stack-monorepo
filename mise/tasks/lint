@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Lint all apps (alias of local:lint)"
+mise run local:lint

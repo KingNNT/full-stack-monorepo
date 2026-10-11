@@ -1,20 +1,3 @@
 [tools]
 node = "lts"
 pnpm = "11"
-
-# Short aliases for the most common daily commands
-[tasks.dev]
-description = "Start all apps in dev mode"
-depends = ["local:dev"]
-
-[tasks.lint]
-description = "Lint all apps"
-depends = ["local:lint"]
-
-[tasks.test]
-description = "Run unit tests for all apps"
-depends = ["local:test"]
-
-[tasks.typecheck]
-description = "Typecheck all apps"
-depends = ["local:typecheck"]
