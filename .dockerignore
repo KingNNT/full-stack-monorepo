@@ -7,3 +7,5 @@
 **/.env.production
 **/coverage
 **/.nx
+**/.pnpm-store
+.worktrees

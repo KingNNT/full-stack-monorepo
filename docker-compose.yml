@@ -23,6 +23,18 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-fullstack_monorepo_dev}
+      # Inside the network the api always listens on 8000; the host port is
+      # API_PORT from the shell (see the override file).
+      API_PORT: 8000
+      # No collector runs in this stack; export OTEL_SDK_DISABLED=false and
+      # point OTEL_EXPORTER_OTLP_ENDPOINT at one to send telemetry.
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-true}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8000/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,7 +48,8 @@ services:
       NODE_ENV: production
       API_BASE_URL: http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

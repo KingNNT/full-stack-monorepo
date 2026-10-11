@@ -11,6 +11,11 @@ RUN pnpm install --frozen-lockfile --filter @fullstack-monorepo-app/api...
 
 WORKDIR /app/apps/api
 
+# The repo is bind-mounted over /app in dev, so pnpm's pre-script dependency
+# check sees a different store, fails without a TTY, and drops .pnpm-store/
+# into the host checkout. Dependencies are baked into the image instead.
+ENV pnpm_config_verify_deps_before_run=false
+
 EXPOSE 8000
 
 CMD ["pnpm", "dev"]

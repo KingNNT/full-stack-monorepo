@@ -155,7 +155,8 @@ Verify: `grep -c '^JWT_ACCESS_SECRET=.\+' apps/api/.env` and
 mise run local:docker:up:api
 ```
 
-This runs `docker compose up --build -d postgres api`. **The first run builds
+This runs `docker compose up --build --renew-anon-volumes --wait postgres api`
+and returns only once both containers report healthy. **The first run builds
 the API image and takes several minutes** — allow at least 10 minutes and do not
 treat a long-running command as a failure. Later runs reuse the cached layers.
 

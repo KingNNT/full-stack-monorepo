@@ -254,7 +254,7 @@ modules/{domain}/
 | `POSTGRES_PASSWORD` | Database password | `password` |
 | `POSTGRES_DB` | Database name | `fullstack_monorepo_dev` |
 
-Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell.
+Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell. The same goes for the host ports Compose publishes: export `API_PORT` / `WEB_PORT` in your shell to change them; inside the containers the api always listens on 8000 and the web on 3000. The dev containers run as your host user (`HOST_UID`/`HOST_GID`, exported by `mise run local:docker:up*`; plain `docker compose` falls back to 1000) so files they write into the checkout are not owned by root on Linux.
 
 **Setup:** each app loads its own `.env` from its directory (Nest `ConfigModule`, Next.js, drizzle-kit and the seed script). Docker Compose passes `apps/<app>/.env` to each container. There is no root `.env`. Tests: `NODE_ENV=test` also loads `.env.test` in the same app directory. Web-only personal overrides can go in `apps/web/.env.local` (gitignored).
 
