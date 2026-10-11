@@ -13,7 +13,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../../user/presentation/decorators/current-user.decorator';
 import { LoginCommand } from '../../application/commands/login/login.command';
 import type { LoginResult } from '../../application/commands/login/login.result';
@@ -81,6 +81,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @SkipThrottle()
   @UseGuards(JwtRefreshGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Exchange a refresh token for a new token pair' })

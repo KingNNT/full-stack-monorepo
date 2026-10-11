@@ -47,11 +47,15 @@ export class SendPasswordChangedEmailHandler
       );
     } catch (err) {
       this.failures.add(1, { template: 'password-changed' });
+      // Never log err.message: SES/SMTP errors can embed the recipient.
+      const statusCode = (err as { $metadata?: { httpStatusCode?: number } })
+        ?.$metadata?.httpStatusCode;
       this.logger.error(
         {
           userId: event.userId,
           template: 'password-changed',
-          err: (err as Error).message,
+          errorName: (err as Error)?.name,
+          ...(statusCode !== undefined && { statusCode }),
         },
         'Failed to send email',
       );

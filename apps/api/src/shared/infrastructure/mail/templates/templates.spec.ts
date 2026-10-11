@@ -43,8 +43,22 @@ describe('mail templates', () => {
       forgotPasswordUrl: 'https://x.test/en/forgot-password',
     });
 
-    expect(changed.text).toContain('changed');
-    expect(reset.text).toContain('reset');
+    expect(changed.text).toContain('just changed');
+    expect(changed.text).not.toContain('using a reset link');
+    expect(reset.text).toContain('using a reset link');
     expect(changed.html).toContain('https://x.test/en/forgot-password');
+  });
+
+  it('renders the changed email in Vietnamese without English fragments', () => {
+    for (const method of ['change', 'reset'] as const) {
+      const mail = renderTemplate('password-changed', 'vi', {
+        method,
+        forgotPasswordUrl: 'https://x.test/vi/forgot-password',
+      });
+
+      expect(mail.subject).toBe('Mật khẩu của bạn đã được thay đổi');
+      expect(mail.text).not.toContain('(changed)');
+      expect(mail.text).not.toContain('(reset)');
+    }
   });
 });

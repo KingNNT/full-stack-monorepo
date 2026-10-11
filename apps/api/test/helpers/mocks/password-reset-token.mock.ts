@@ -6,6 +6,7 @@ export function createMockPasswordResetTokenRepository(): jest.Mocked<IPasswordR
       .fn()
       .mockResolvedValue({ issuedSince: 0, latestCreatedAt: null }),
     issue: jest.fn().mockResolvedValue(undefined),
+    supersedeAllForUser: jest.fn().mockResolvedValue(undefined),
     redeem: jest.fn().mockResolvedValue(null),
   };
 }

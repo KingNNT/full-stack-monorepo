@@ -123,16 +123,31 @@ describe("authConfig callbacks", () => {
 	});
 
 	it("replaces the API tokens on a server-side session update", async () => {
-		const fresh = encode({ exp: 4_102_444_800 });
+		const fresh = encode({ sub: "1", exp: 4_102_444_800 });
 
 		const token = await authConfig.callbacks.jwt({
-			token: { accessToken: "old", refreshToken: "old-r" },
+			token: { id: "1", accessToken: "old", refreshToken: "old-r" },
 			trigger: "update",
 			session: { apiTokens: { access_token: fresh, refresh_token: "new-r" } },
 		} as unknown as TJwtParams);
 
 		expect(token).toMatchObject({ accessToken: fresh, refreshToken: "new-r" });
 		expect(token.accessTokenExpires).toBe(4_102_444_800_000);
+	});
+
+	it.each([
+		["another user", encode({ sub: "2", exp: 4_102_444_800 })],
+		["no subject", encode({ exp: 4_102_444_800 })],
+	])("ignores a session update whose access token belongs to %s", async (_label, foreign) => {
+		const existing: JWT = { id: "1", accessToken: "old", refreshToken: "old-r" };
+
+		const token = await authConfig.callbacks.jwt({
+			token: { ...existing },
+			trigger: "update",
+			session: { apiTokens: { access_token: foreign, refresh_token: "new-r" } },
+		} as unknown as TJwtParams);
+
+		expect(token).toEqual(existing);
 	});
 
 	it("exposes the refresh failure on the session", () => {

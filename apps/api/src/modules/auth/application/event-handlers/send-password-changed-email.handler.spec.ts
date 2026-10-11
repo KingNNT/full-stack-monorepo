@@ -7,8 +7,9 @@ describe('SendPasswordChangedEmailHandler', () => {
   const failures = { add: jest.fn() };
   const metrics = { counter: jest.fn().mockReturnValue(failures) };
   const config = { get: jest.fn().mockReturnValue('https://app.test') };
+  const logger = createMockPinoLogger();
   const handler = new SendPasswordChangedEmailHandler(
-    createMockPinoLogger() as any,
+    logger as any,
     mail,
     metrics as any,
     config as any,
@@ -32,8 +33,10 @@ describe('SendPasswordChangedEmailHandler', () => {
     );
   });
 
-  it('swallows failures', async () => {
-    mail.sendTemplate.mockRejectedValue(new Error('down'));
+  it('swallows failures without logging the recipient', async () => {
+    mail.sendTemplate.mockRejectedValueOnce(
+      new Error('Message rejected: a@example.com is not verified'),
+    );
 
     await expect(
       handler.handle(
@@ -43,5 +46,12 @@ describe('SendPasswordChangedEmailHandler', () => {
     expect(failures.add).toHaveBeenCalledWith(1, {
       template: 'password-changed',
     });
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u1', errorName: 'Error' }),
+      'Failed to send email',
+    );
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain(
+      'a@example.com',
+    );
   });
 });

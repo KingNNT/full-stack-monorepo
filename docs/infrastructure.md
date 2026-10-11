@@ -230,7 +230,8 @@ Manual steps per region and environment:
 1. Request SES production access (Console → SES → Account dashboard). Until
    then SES delivers only to verified addresses.
 2. If the domain's DNS is not hosted on Route53, copy the DKIM, MAIL FROM and
-   DMARC records from `terraform output` into your DNS provider.
+   DMARC records from `terraform output ses_dns_records` into your DNS
+   provider.
 3. Watch bounce and complaint rates on the SES account dashboard; there is no
    alerting yet. Raise DMARC to `p=quarantine` once reports are clean.
 

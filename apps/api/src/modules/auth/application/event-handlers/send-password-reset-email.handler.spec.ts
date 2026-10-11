@@ -45,13 +45,26 @@ describe('SendPasswordResetEmailHandler', () => {
   });
 
   it('logs and counts failures without throwing or leaking the email', async () => {
-    mail.sendTemplate.mockRejectedValue(new Error('SES down'));
+    const err = Object.assign(
+      new Error('Message rejected: a@example.com is not verified'),
+      { name: 'MessageRejected', $metadata: { httpStatusCode: 400 } },
+    );
+    mail.sendTemplate.mockRejectedValueOnce(err);
 
     await expect(handler.handle(event)).resolves.toBeUndefined();
 
     expect(failures.add).toHaveBeenCalledWith(1, {
       template: 'password-reset',
     });
+    expect(logger.error).toHaveBeenCalledWith(
+      {
+        userId: 'u1',
+        template: 'password-reset',
+        errorName: 'MessageRejected',
+        statusCode: 400,
+      },
+      'Failed to send email',
+    );
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain(
       'a@example.com',
     );

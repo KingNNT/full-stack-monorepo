@@ -5,7 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import { HttpStatusError } from "@/apis/errors";
 import { AuthException } from "@/exceptions";
 import type { ILoginData } from "@/types/auth";
-import { getJwtExpiry } from "@/utils/jwt";
+import { getJwtExpiry, getJwtSubject } from "@/utils/jwt";
 import { authService } from "./auth.service";
 
 // Refresh a minute early so a request never leaves with an access token that expires in flight
@@ -76,7 +76,9 @@ export const authConfig = {
 			// Server-side unstable_update() after a password change hands over the new pair
 			const apiTokens = (session as { apiTokens?: ILoginData } | undefined)?.apiTokens;
 			if (trigger === "update" && apiTokens) {
-				return withApiTokens(token, apiTokens);
+				// Only accept tokens issued to the user this session belongs to
+				const sameUser = getJwtSubject(apiTokens.access_token) === token.id;
+				return sameUser ? withApiTokens(token, apiTokens) : token;
 			}
 
 			if (token.error || !token.refreshToken) {

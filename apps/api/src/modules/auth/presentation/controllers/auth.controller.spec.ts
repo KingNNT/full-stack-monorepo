@@ -82,6 +82,24 @@ describe('AuthController', () => {
       expect(result).toBeInstanceOf(TokenPairResponseDto);
       expect(result.accessToken).toBe('a2');
     });
+
+    it('is exempt from the IP throttle; other routes are not', () => {
+      // Key set by @SkipThrottle(): THROTTLER_SKIP + throttler name.
+      const skipKey = 'THROTTLER:SKIPdefault';
+      expect(
+        Reflect.getMetadata(skipKey, AuthController.prototype.refresh),
+      ).toBe(true);
+      for (const route of [
+        'login',
+        'register',
+        'forgotPassword',
+        'resetPassword',
+      ] as const) {
+        expect(
+          Reflect.getMetadata(skipKey, AuthController.prototype[route]),
+        ).toBeUndefined();
+      }
+    });
   });
 
   describe('forgotPassword()', () => {

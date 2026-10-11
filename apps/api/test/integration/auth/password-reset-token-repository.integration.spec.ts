@@ -5,6 +5,7 @@ import { AuthCredentialsRepository } from '../../../src/modules/auth/infrastruct
 import { PasswordResetTokenRepository } from '../../../src/modules/auth/infrastructure/persistence/password-reset-token.repository';
 import { AuditableTableService } from '../../../src/shared/infrastructure/database/auditable-table.service';
 import type { DrizzleService } from '../../../src/shared/infrastructure/database/drizzle.service';
+import { authCredentialsTable } from '../../../src/shared/infrastructure/database/schema/auth-credentials.table';
 import { passwordResetTokensTable } from '../../../src/shared/infrastructure/database/schema/password-reset-tokens.table';
 import {
   cleanDatabase,
@@ -158,5 +159,50 @@ describe('PasswordResetTokenRepository (integration)', () => {
     ]);
 
     expect(results.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled']);
+  });
+
+  const unusedTokenHashes = async (): Promise<string[]> => {
+    const rows = await db
+      .select({ tokenHash: passwordResetTokensTable.tokenHash })
+      .from(passwordResetTokensTable)
+      .where(
+        and(
+          eq(passwordResetTokensTable.userId, userId),
+          isNull(passwordResetTokensTable.usedAt),
+        ),
+      );
+    return rows.map((r) => r.tokenHash);
+  };
+
+  it("supersedeAllForUser() marks only that user's unused tokens as used", async () => {
+    const otherUserId = randomUUID();
+    await credentials.create(
+      otherUserId,
+      'other@example.com',
+      'otheruser',
+      'other-hash',
+    );
+    await repo.issue(userId, 'hash-a', inMinutes(30));
+    await repo.issue(otherUserId, 'hash-other-user', inMinutes(30));
+
+    await repo.supersedeAllForUser(userId);
+
+    expect(await unusedTokenHashes()).toEqual([]);
+    expect(await repo.redeem('hash-a', 'new-hash')).toBeNull();
+    expect(await repo.redeem('hash-other-user', 'new-hash')).not.toBeNull();
+  });
+
+  it('redeem() refuses an inactive account and leaves the token unused', async () => {
+    await repo.issue(userId, 'hash-a', inMinutes(30));
+    await db
+      .update(authCredentialsTable)
+      .set({ isActive: false })
+      .where(eq(authCredentialsTable.userId, userId));
+
+    expect(await repo.redeem('hash-a', 'new-hash')).toBeNull();
+    expect(await unusedTokenHashes()).toEqual(['hash-a']);
+    expect((await credentials.findByUserId(userId))?.passwordHash).toBe(
+      'old-hash',
+    );
   });
 });

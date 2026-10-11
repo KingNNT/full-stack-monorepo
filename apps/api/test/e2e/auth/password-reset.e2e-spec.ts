@@ -109,6 +109,9 @@ describe('Forgot / reset password (e2e)', () => {
     const oldSession = await request(server())
       .get('/api/v1/users/profile')
       .set('Authorization', `Bearer ${login.body.data.access_token}`);
+    const oldRefresh = await request(server())
+      .post('/api/v1/auth/refresh')
+      .set('Authorization', `Bearer ${login.body.data.refresh_token}`);
     const reuse = await request(server())
       .post('/api/v1/auth/reset-password')
       .send({ token, new_password: 'anotherPass1' });
@@ -116,6 +119,8 @@ describe('Forgot / reset password (e2e)', () => {
     expect(oldPassword.status).toBe(401);
     expect(newPassword.status).toBe(200);
     expect(oldSession.status).toBe(401);
+    expect(oldRefresh.status).toBe(401);
+    expect(oldRefresh.body.error).toBe('SESSION_REVOKED');
     expect(reuse.status).toBe(400);
     expect(reuse.body.error).toBe('INVALID_RESET_TOKEN');
     expect(mail.lastTo(user.email)?.subject).toBe('Your password was changed');

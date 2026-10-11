@@ -16,6 +16,10 @@ import {
   PASSWORD_HASHER_TOKEN,
 } from '../../ports/password-hasher.interface';
 import {
+  type IPasswordResetTokenRepository,
+  PASSWORD_RESET_TOKEN_REPOSITORY_TOKEN,
+} from '../../ports/password-reset-token.repository.interface';
+import {
   type ITokenService,
   TOKEN_SERVICE_TOKEN,
   type TokenPair,
@@ -31,6 +35,8 @@ export class ChangePasswordHandler
     private readonly logger: PinoLogger,
     @Inject(AUTH_CREDENTIALS_REPOSITORY_TOKEN)
     private readonly credentialsRepo: IAuthCredentialsRepository,
+    @Inject(PASSWORD_RESET_TOKEN_REPOSITORY_TOKEN)
+    private readonly resetTokens: IPasswordResetTokenRepository,
     @Inject(PASSWORD_HASHER_TOKEN)
     private readonly passwordHasher: IPasswordHasher,
     @Inject(TOKEN_SERVICE_TOKEN)
@@ -80,6 +86,8 @@ export class ChangePasswordHandler
         command.userId,
         newHash,
       );
+    // A reset link requested before the change must not undo it
+    await this.resetTokens.supersedeAllForUser(command.userId);
     const tokens = await this.tokenService.generateTokenPair(
       command.userId,
       tokenVersion,

@@ -17,8 +17,9 @@ const COPY = {
   vi: {
     subject: 'Mật khẩu của bạn đã được thay đổi',
     body: {
-      change: 'Mật khẩu tài khoản của bạn vừa được thay đổi (changed).',
-      reset: 'Mật khẩu tài khoản của bạn vừa được đặt lại qua link (reset).',
+      change: 'Mật khẩu tài khoản của bạn vừa được thay đổi.',
+      reset:
+        'Mật khẩu tài khoản của bạn vừa được đặt lại qua liên kết đặt lại mật khẩu.',
     },
     notYou:
       'Nếu không phải bạn, hãy đặt lại mật khẩu ngay và kiểm tra tài khoản.',

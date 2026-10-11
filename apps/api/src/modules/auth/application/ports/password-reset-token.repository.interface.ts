@@ -17,10 +17,13 @@ export interface IPasswordResetTokenRepository {
   statsForUser(userId: string, since: Date): Promise<ResetTokenStats>;
   /** Supersedes the user's unused tokens and stores the new one, atomically. */
   issue(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
+  /** Marks all of the user's unused tokens as used (e.g. after a change). */
+  supersedeAllForUser(userId: string): Promise<void>;
   /**
    * Atomically claims a valid token, stores the new password hash, bumps
    * token_version and supersedes the user's other tokens.
-   * Returns null when the token is unknown, expired or already used.
+   * Returns null when the token is unknown, expired or already used, or the
+   * account is inactive.
    */
   redeem(
     tokenHash: string,

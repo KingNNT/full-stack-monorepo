@@ -62,6 +62,27 @@ export class PasswordResetTokenRepository
     });
   }
 
+  async supersedeAllForUser(userId: string): Promise<void> {
+    await this.drizzle.transaction(async (tx) => {
+      // Same lock order as issue() and redeem(): credentials -> tokens
+      await tx
+        .select({ userId: authCredentialsTable.userId })
+        .from(authCredentialsTable)
+        .where(eq(authCredentialsTable.userId, userId))
+        .for('update');
+      await this.audit.update(
+        tokens,
+        and(
+          eq(tokens.userId, userId),
+          isNull(tokens.usedAt),
+          isNull(tokens.deletedAt),
+        )!,
+        { usedAt: new Date() },
+        tx,
+      );
+    });
+  }
+
   async redeem(
     tokenHash: string,
     newPasswordHash: string,
@@ -74,11 +95,18 @@ export class PasswordResetTokenRepository
         .from(tokens)
         .where(and(eq(tokens.tokenHash, tokenHash), isNull(tokens.deletedAt)));
       if (!candidate) return null;
-      await tx
-        .select({ userId: authCredentialsTable.userId })
+      const [account] = await tx
+        .select({ isActive: authCredentialsTable.isActive })
         .from(authCredentialsTable)
-        .where(eq(authCredentialsTable.userId, candidate.userId))
+        .where(
+          and(
+            eq(authCredentialsTable.userId, candidate.userId),
+            isNull(authCredentialsTable.deletedAt),
+          ),
+        )
         .for('update');
+      // Inactive or deleted accounts cannot be reset; leave the token unclaimed
+      if (!account?.isActive) return null;
       // Conditional UPDATE claims the token: a concurrent redeem finds used_at set
       const [claimed] = await tx
         .update(tokens)
