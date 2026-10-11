@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Build & start api + postgres + mailpit"
-set -e
-HOST_UID="$(id -u)" HOST_GID="$(id -g)" \
-  docker compose up --build --renew-anon-volumes --wait postgres api mailpit

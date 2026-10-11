@@ -5,8 +5,7 @@ Gemini CLI, Copilot) installing this project without a human answering prompts.
 
 Platforms: macOS, Linux, WSL. Windows-native is not supported.
 
-Every snippet below assumes **bash**. `set -m` and `kill -- -PID` in §C are
-bash job-control syntax; run them under `bash`, not zsh or sh.
+Every snippet below assumes **bash**; run them under `bash`, not zsh or sh.
 
 ## 0. Pick your branch
 
@@ -149,22 +148,24 @@ done
 Verify: `grep -c '^JWT_ACCESS_SECRET=.\+' apps/api/.env` and
 `grep -c '^AUTH_SECRET=.\+' apps/web/.env` each print `1`.
 
-### Step 4 — Start PostgreSQL and the API container
+### Step 4 — Start the containers
 
 ```bash
-mise run local:docker:up:api
+mise run local:docker:up
 ```
 
-This runs `docker compose up --build --renew-anon-volumes --wait postgres api mailpit`
-and returns only once the containers are up (the api reports healthy). **The first run builds
-the API image and takes several minutes** — allow at least 10 minutes and do not
-treat a long-running command as a failure. Later runs reuse the cached layers.
+This runs `docker compose up --build --renew-anon-volumes --wait` for every
+service — `postgres`, `api`, `web` and `mailpit` — and returns only once they are
+up (postgres, api and web report healthy). **The first run builds the images and
+takes several minutes** — allow at least 10 minutes and do not treat a
+long-running command as a failure. Later runs reuse the cached layers.
 
 Outgoing email is captured by Mailpit: http://localhost:8025
 
-The api container publishes host port 8000. Step 6 and §C both depend on it, so
-leave it running, and do **not** start `mise run dev` while it is up — the nx api
-target binds the same port and fails with `EADDRINUSE`.
+The api container publishes host port 8000 and the web container port 3000.
+Step 6 and §C depend on them, so leave them running, and do **not** start
+`mise run dev` while they are up — the nx targets bind the same ports and fail
+with `EADDRINUSE`.
 
 Verify:
 
@@ -172,8 +173,8 @@ Verify:
 docker compose ps
 ```
 
-Expect `postgres` healthy and `api` up before continuing. If Docker is
-unavailable, see [§D](#d-troubleshooting).
+Expect `postgres`, `api` and `web` healthy and `mailpit` up before continuing.
+If Docker is unavailable, see [§D](#d-troubleshooting).
 
 ### Step 5 — Run migrations
 
@@ -196,9 +197,9 @@ from step 4 must be running**, or this step fails partway through.
 
 ## C. Smoke test
 
-The API is already running from step 4 (the container on port 8000). **Do not
-run `mise run dev` here** — it would start a second API on the same port. Check
-the running API, then start only the web dev server.
+Both apps are already running from step 4 (api on port 8000, web on 3000).
+**Do not run `mise run dev` here** — it would try to bind the same ports. Check
+the running containers.
 
 ### API
 
@@ -223,56 +224,23 @@ Two things about that URL and that check:
 
 ### Web
 
-The dev server runs until killed. **Start it in the background** — a foreground
-run blocks your session indefinitely. `set -m` puts the job in its own process
-group so the whole node tree can be killed later.
-
 ```bash
-set -m
-pnpm dev:web > /tmp/dev-web.log 2>&1 &
-WEB_PID=$!
-set +m
-```
-
-Poll until it answers (up to ~60s):
-
-```bash
-for i in $(seq 1 30); do
-  curl -sI http://localhost:3000 >/dev/null 2>&1 && break
-  sleep 2
-done
-
 curl -sI http://localhost:3000 | head -1   # expect HTTP/1.1 307 (locale redirect), or any 2xx/3xx
 ```
 
-Stop it, then confirm the port actually stopped answering — `kill $WEB_PID`
-alone signals the wrapper and can leave node children holding port 3000 while
-you report success:
-
-```bash
-kill -- "-$WEB_PID" 2>/dev/null || kill "$WEB_PID"
-sleep 3
-lsof -i :3000 -sTCP:LISTEN >/dev/null 2>&1 \
-  && echo "port 3000 STILL HELD" || echo "port 3000 free"
-```
-
-Run the start, check, and stop in **one shell session** — `WEB_PID` does not
-survive across separate shell invocations.
-
-If either app never answers, read `/tmp/dev-web.log` and
-`mise run local:docker:logs` before reporting failure.
+If either app never answers, read `mise run local:docker:logs` before reporting
+failure.
 
 **Do not report success until every box is checked:**
 
 - [ ] `mise trust` + `mise install` succeeded, `node` and `pnpm` resolve
 - [ ] `pnpm install` succeeded
 - [ ] `apps/api/.env` and `apps/web/.env` exist (pre-existing and untouched, or created with generated secrets)
-- [ ] `postgres` and `api` containers are up
+- [ ] `postgres`, `api`, `web` and `mailpit` containers are up
 - [ ] `local:db:migrate` exited 0
 - [ ] `local:db:seed` exited 0
 - [ ] `curl -fsS http://localhost:8000/v1/health` output contains `"status":"ok"`
 - [ ] `curl -I http://localhost:3000` returned 2xx or 3xx
-- [ ] The background web dev process was stopped **and port 3000 is free**
 
 Optional, only when the user asks for a full check:
 
@@ -290,8 +258,8 @@ mise run typecheck
 | `pnpm: command not found` / `node: command not found` after a successful `mise install` | mise shims not on `PATH`; `mise activate` is a shell-rc hook a non-interactive shell never sources | `eval "$(mise activate bash --shims)"`, or prefix the command with `mise exec --` |
 | `Cannot connect to the Docker daemon` | Docker not running | Start Docker Desktop (macOS) or `sudo systemctl start docker` (Linux) |
 | `404 Cannot GET /health` | `/health` is versioned; the mapped route is `/v1/health` | Use `http://localhost:8000/v1/health` |
-| `address already in use` on 8000 or 3000 | Another process holds the port | Identify it with `lsof -i :8000` (or `:3000`). If it is something *this runbook* started — the api container (`docker compose stop api`) or your own web dev server — stop that. **Otherwise ask the user before killing anything you did not start.** |
-| `db-seed` fails with an HTTP error registering `admin@example.com` | No API listening on port 8000 | Bring up step 4's api container first, or point the seed at a running API with `API_BASE_URL` |
+| `address already in use` on 8000 or 3000 | Another process holds the port | Identify it with `lsof -i :8000` (or `:3000`). If it is something *this runbook* started — the app containers (`docker compose stop api web`) — stop that. **Otherwise ask the user before killing anything you did not start.** |
+| `db-seed` fails with an HTTP error registering `admin@example.com` | No API listening on port 8000 | Bring up step 4's containers first, or point the seed at a running API with `API_BASE_URL` |
 | API cannot reach the database | Wrong host in `DATABASE_URL` | Inside Docker the host is `postgres`; from the host machine it is `localhost` |
 | Pre-commit hook fails on gitleaks | No local binary and no Docker | `tools/bin/gitleaks` falls back to `docker run` — start Docker, or install gitleaks |
 | `Target directory already exists` from `install.sh` | `./<PROJECT_NAME>` is taken | Pick another `PROJECT_NAME`, or set `INSTALL_DIR` to a free path |
@@ -303,6 +271,6 @@ mise run typecheck
 - Commit, push, or create branches unless the user explicitly asks.
 - Use `npm`, `npx`, or `yarn`.
 - Run `mise run local:docker:clean` — it deletes volumes, and with them the database.
-- Run the dev server in the foreground.
+- Run `mise run dev` in the foreground while the containers hold ports 8000 and 3000.
 - Kill a process or container you did not start. Ask the user first.
 - Report success without completing the §C checklist.

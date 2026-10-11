@@ -88,9 +88,9 @@ for app in api web; do
   done
 done
 
-# Start PostgreSQL + API + Mailpit (first run builds the API image — several minutes)
+# Start PostgreSQL + API + web + Mailpit (first run builds the images — several minutes)
 # Outgoing email is captured by Mailpit: http://localhost:8025
-mise run local:docker:up:api
+mise run local:docker:up
 
 # Run database migrations
 mise run local:db:migrate
