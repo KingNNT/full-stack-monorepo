@@ -155,10 +155,12 @@ Verify: `grep -c '^JWT_ACCESS_SECRET=.\+' apps/api/.env` and
 mise run local:docker:up:api
 ```
 
-This runs `docker compose up --build --renew-anon-volumes --wait postgres api`
-and returns only once both containers report healthy. **The first run builds
+This runs `docker compose up --build --renew-anon-volumes --wait postgres api mailpit`
+and returns only once the containers are up (the api reports healthy). **The first run builds
 the API image and takes several minutes** — allow at least 10 minutes and do not
 treat a long-running command as a failure. Later runs reuse the cached layers.
+
+Outgoing email is captured by Mailpit: http://localhost:8025
 
 The api container publishes host port 8000. Step 6 and §C both depend on it, so
 leave it running, and do **not** start `mise run dev` while it is up — the nx api

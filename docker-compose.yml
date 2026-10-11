@@ -29,6 +29,8 @@ services:
       # No collector runs in this stack; export OTEL_SDK_DISABLED=false and
       # point OTEL_EXPORTER_OTLP_ENDPOINT at one to send telemetry.
       OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-true}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
     healthcheck:
       test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8000/v1/health"]
       interval: 5s
@@ -38,6 +40,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  mailpit:
+    image: axllent/mailpit:v1.27
 
   web:
     build:

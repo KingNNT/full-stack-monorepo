@@ -21,6 +21,11 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
 
+  mailpit:
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   web:
     build:
       target: dev
