@@ -65,6 +65,7 @@ phases:
           -f "infra/helm/api/values-${ENVIRONMENT}.yaml" \
           --set image.repository="${ECR_REGISTRY}/fullstack-monorepo/api" \
           --set-string image.tag="${IMAGE_TAG}" \
+          --set-string "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${APP_POD_ROLE_ARN}" \
           --set-literal secrets.DATABASE_URL="${DATABASE_URL}" \
           --set-literal secrets.JWT_ACCESS_SECRET="${JWT_ACCESS_SECRET}" \
           --set-literal secrets.JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}" \

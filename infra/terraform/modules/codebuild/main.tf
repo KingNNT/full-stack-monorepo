@@ -153,6 +153,11 @@ resource "aws_codebuild_project" "helm_deploy" {
       value = var.lb_controller_role_arn
     }
 
+    environment_variable {
+      name  = "APP_POD_ROLE_ARN"
+      value = var.app_pod_role_arn
+    }
+
     dynamic "environment_variable" {
       for_each = var.secret_env_vars
       content {

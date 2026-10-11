@@ -55,3 +55,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "app_pod_role_arn" {
+  description = "IRSA role ARN annotated on the api service account"
+  type        = string
+  default     = ""
+}
