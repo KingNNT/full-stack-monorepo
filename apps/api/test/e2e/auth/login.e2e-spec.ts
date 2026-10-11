@@ -44,14 +44,18 @@ describe('POST /auth/login (e2e)', () => {
   beforeEach(async () => {
     await cleanDatabase(db);
     // Register a test user before each login test
-    await request(app.getHttpServer()).post('/auth/register').send(testUser);
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send(testUser);
   });
 
   it('200 — login with email', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/login').send({
-      identifier: testUser.email,
-      password: testUser.password,
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: testUser.email,
+        password: testUser.password,
+      });
 
     expect(res.status).toBe(200);
     expect(res.body.data.access_token).toBeDefined();
@@ -61,10 +65,12 @@ describe('POST /auth/login (e2e)', () => {
   });
 
   it('200 — login with username', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/login').send({
-      identifier: testUser.username,
-      password: testUser.password,
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: testUser.username,
+        password: testUser.password,
+      });
 
     expect(res.status).toBe(200);
     expect(res.body.data.access_token).toBeDefined();
@@ -72,10 +78,12 @@ describe('POST /auth/login (e2e)', () => {
   });
 
   it('returns valid JWT tokens', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/login').send({
-      identifier: testUser.email,
-      password: testUser.password,
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: testUser.email,
+        password: testUser.password,
+      });
 
     // JWT tokens have 3 parts separated by dots
     expect(res.body.data.access_token.split('.')).toHaveLength(3);
@@ -83,33 +91,39 @@ describe('POST /auth/login (e2e)', () => {
   });
 
   it('401 — wrong password', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/login').send({
-      identifier: testUser.email,
-      password: 'wrongPassword',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: testUser.email,
+        password: 'wrongPassword',
+      });
 
     expect(res.status).toBe(401);
   });
 
   it('401 — non-existent user', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/login').send({
-      identifier: 'nobody@example.com',
-      password: 'somePassword',
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: 'nobody@example.com',
+        password: 'somePassword',
+      });
 
     expect(res.status).toBe(401);
   });
 
   it('400 — missing fields', async () => {
-    const res = await request(app.getHttpServer()).post('/auth/login').send({
-      identifier: testUser.email,
-    });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: testUser.email,
+      });
 
     expect(res.status).toBe(400);
   });
 
   it('updates lastLoginAt timestamp', async () => {
-    await request(app.getHttpServer()).post('/auth/login').send({
+    await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       identifier: testUser.email,
       password: testUser.password,
     });

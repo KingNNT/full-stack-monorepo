@@ -14,8 +14,11 @@ export class TokenServiceImpl implements ITokenService {
     private readonly config: ConfigService,
   ) {}
 
-  async generateTokenPair(userId: string): Promise<TokenPair> {
-    const payload: JwtPayload = { sub: userId };
+  async generateTokenPair(
+    userId: string,
+    tokenVersion: number,
+  ): Promise<TokenPair> {
+    const payload: JwtPayload = { sub: userId, tv: tokenVersion };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwt.signAsync(payload, {

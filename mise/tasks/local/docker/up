@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Build & start all containers (postgres, api, web, mailpit)"
+set -e
+# Docker creates a missing mount point as root; create it as the host user.
+mkdir -p apps/web/.next
+HOST_UID="$(id -u)" HOST_GID="$(id -g)" \
+  docker compose up --build --renew-anon-volumes --wait

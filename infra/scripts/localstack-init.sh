@@ -11,7 +11,7 @@ echo "==> Starting LocalStack..."
 docker compose -f "$PROJECT_ROOT/docker-compose.yml" up -d postgres
 docker run -d --name localstack \
   -p 4566:4566 \
-  -e SERVICES=s3,ecr,iam,route53,acm,cloudfront,sts \
+  -e SERVICES=s3,ecr,iam,route53,acm,cloudfront,sts,ses \
   -e DEFAULT_REGION=ap-southeast-1 \
   localstack/localstack:latest 2>/dev/null || echo "LocalStack already running"
 
@@ -27,6 +27,9 @@ for i in $(seq 1 30); do
   fi
   sleep 2
 done
+
+aws --endpoint-url "$LOCALSTACK_ENDPOINT" --region us-east-1 sesv2 create-email-identity \
+  --email-identity example.com >/dev/null 2>&1 || true
 
 echo "==> Setting up kind cluster..."
 if ! kind get clusters 2>/dev/null | grep -q "$KIND_CLUSTER_NAME"; then

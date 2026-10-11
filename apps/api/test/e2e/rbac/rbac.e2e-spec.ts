@@ -41,10 +41,12 @@ describe('RBAC (e2e)', () => {
   }
 
   async function seedSuperAdmin() {
-    await request(app.getHttpServer()).post('/auth/register').send(testUser);
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send(testUser);
 
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({
         identifier: testUser.email,
         password: testUser.password,
@@ -95,7 +97,7 @@ describe('RBAC (e2e)', () => {
   describe('Roles CRUD', () => {
     it('POST /rbac/roles — creates a role', async () => {
       const res = await request(app.getHttpServer())
-        .post('/rbac/roles')
+        .post('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           name: 'editor',
@@ -110,7 +112,7 @@ describe('RBAC (e2e)', () => {
 
     it('GET /rbac/roles — lists roles', async () => {
       const res = await request(app.getHttpServer())
-        .get('/rbac/roles')
+        .get('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
@@ -120,7 +122,7 @@ describe('RBAC (e2e)', () => {
 
     it('GET /rbac/roles/:id — gets role with permissions', async () => {
       const createRes = await request(app.getHttpServer())
-        .post('/rbac/roles')
+        .post('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           name: 'viewer',
@@ -130,7 +132,7 @@ describe('RBAC (e2e)', () => {
       const roleId = createRes.body.data.id;
 
       const res = await request(app.getHttpServer())
-        .get(`/rbac/roles/${roleId}`)
+        .get(`/api/v1/rbac/roles/${roleId}`)
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
@@ -140,7 +142,7 @@ describe('RBAC (e2e)', () => {
 
     it('PATCH /rbac/roles/:id — updates role', async () => {
       const createRes = await request(app.getHttpServer())
-        .post('/rbac/roles')
+        .post('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           name: 'old-name',
@@ -150,7 +152,7 @@ describe('RBAC (e2e)', () => {
       const roleId = createRes.body.data.id;
 
       const res = await request(app.getHttpServer())
-        .patch(`/rbac/roles/${roleId}`)
+        .patch(`/api/v1/rbac/roles/${roleId}`)
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ name: 'new-name' });
 
@@ -160,7 +162,7 @@ describe('RBAC (e2e)', () => {
 
     it('DELETE /rbac/roles/:id — soft deletes', async () => {
       const createRes = await request(app.getHttpServer())
-        .post('/rbac/roles')
+        .post('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           name: 'disposable',
@@ -170,7 +172,7 @@ describe('RBAC (e2e)', () => {
       const roleId = createRes.body.data.id;
 
       const res = await request(app.getHttpServer())
-        .delete(`/rbac/roles/${roleId}`)
+        .delete(`/api/v1/rbac/roles/${roleId}`)
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(204);
@@ -182,7 +184,7 @@ describe('RBAC (e2e)', () => {
   describe('Permissions CRUD', () => {
     it('POST /rbac/permissions — creates a permission', async () => {
       const res = await request(app.getHttpServer())
-        .post('/rbac/permissions')
+        .post('/api/v1/rbac/permissions')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ name: 'posts.create' });
 
@@ -193,12 +195,12 @@ describe('RBAC (e2e)', () => {
 
     it('GET /rbac/permissions — lists permissions', async () => {
       await request(app.getHttpServer())
-        .post('/rbac/permissions')
+        .post('/api/v1/rbac/permissions')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ name: 'posts.read' });
 
       const res = await request(app.getHttpServer())
-        .get('/rbac/permissions')
+        .get('/api/v1/rbac/permissions')
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
@@ -218,11 +220,11 @@ describe('RBAC (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(secondUser);
 
       const loginRes = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           identifier: secondUser.email,
           password: secondUser.password,
@@ -231,7 +233,7 @@ describe('RBAC (e2e)', () => {
       const noRoleToken = loginRes.body.data.access_token;
 
       const res = await request(app.getHttpServer())
-        .get('/rbac/roles')
+        .get('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${noRoleToken}`);
 
       expect(res.status).toBe(403);
@@ -239,7 +241,7 @@ describe('RBAC (e2e)', () => {
 
     it('200 — super-admin bypasses permission check', async () => {
       const res = await request(app.getHttpServer())
-        .get('/rbac/roles')
+        .get('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
@@ -257,11 +259,11 @@ describe('RBAC (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(secondUser);
 
       const createRoleRes = await request(app.getHttpServer())
-        .post('/rbac/roles')
+        .post('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           name: 'member',
@@ -276,7 +278,7 @@ describe('RBAC (e2e)', () => {
         .where(eq(authCredentialsTable.email, secondUser.email));
 
       const res = await request(app.getHttpServer())
-        .post('/rbac/assign/role')
+        .post('/api/v1/rbac/assign/role')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           model_type: 'user',
@@ -296,11 +298,11 @@ describe('RBAC (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(secondUser);
 
       const createRoleRes = await request(app.getHttpServer())
-        .post('/rbac/roles')
+        .post('/api/v1/rbac/roles')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           name: 'moderator',
@@ -315,7 +317,7 @@ describe('RBAC (e2e)', () => {
         .where(eq(authCredentialsTable.email, secondUser.email));
 
       await request(app.getHttpServer())
-        .post('/rbac/assign/role')
+        .post('/api/v1/rbac/assign/role')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           model_type: 'user',
@@ -324,7 +326,7 @@ describe('RBAC (e2e)', () => {
         });
 
       const res = await request(app.getHttpServer())
-        .get(`/rbac/model/user/${cred.userId}/roles`)
+        .get(`/api/v1/rbac/model/user/${cred.userId}/roles`)
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);

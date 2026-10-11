@@ -119,6 +119,7 @@ describe('RegisterHandler', () => {
       username: 'existinguser',
       passwordHash: '$2b$12$hashed',
       isActive: true,
+      tokenVersion: 0,
     });
 
     const command = new RegisterCommand(
@@ -142,6 +143,7 @@ describe('RegisterHandler', () => {
         username: 'testuser',
         passwordHash: '$2b$12$hashed',
         isActive: true,
+        tokenVersion: 0,
       });
 
     const command = new RegisterCommand(

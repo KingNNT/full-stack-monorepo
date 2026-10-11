@@ -92,15 +92,22 @@ await container.stop();
 
 ## E2E Tests
 
-Full NestJS app via `test-app-factory` with real HTTP calls.
+Full NestJS app via `test-app-factory` with real HTTP calls. The factory
+applies `configureApp()` from `src/app.setup.ts` — the same prefix,
+versioning, interceptors, pipes and filter as `main.ts` — so request the real
+URLs and expect the response envelope.
 
 ```typescript
-const app = await createTestApp();
-await request(app.getHttpServer())
-  .post('/auth/login')
-  .send({ email, password })
+const app = await createTestApp({ DATABASE_URL: dbUrl });
+const res = await request(app.getHttpServer())
+  .post('/api/v1/auth/login')
+  .send({ identifier: email, password })
   .expect(200);
+expect(res.body.data.access_token).toBeDefined();
 ```
+
+Add global app configuration to `configureApp()`, not to `main.ts` or the
+factory, or the two drift apart.
 
 - Seed test data via API requests in `beforeEach`
 - Override environment variables (DATABASE_URL, JWT secrets) — never use real secrets

@@ -6,6 +6,10 @@ services:
   api:
     build:
       target: dev
+    # Run as the host user so files written into the bind-mounted checkout
+    # (dist/, next-env.d.ts, …) are not owned by root on Linux. The
+    # local:docker:up* tasks export these; plain `docker compose` uses 1000.
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "true"
@@ -15,11 +19,17 @@ services:
       - /app/apps/api/node_modules
       - /app/apps/web/node_modules
     ports:
-      - "${API_PORT:-8000}:${API_PORT:-8000}"
+      - "${API_PORT:-8000}:8000"
+
+  mailpit:
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
   web:
     build:
       target: dev
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     environment:
       NODE_ENV: development
       WATCHPACK_POLLING: "true"

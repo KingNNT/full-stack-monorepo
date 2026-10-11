@@ -3,6 +3,7 @@
  * User profile and account management endpoints
  */
 
+import type { ILoginData } from "@/types/auth";
 import type { IChangePasswordRequest, IUpdateProfileRequest, IUserProfile } from "@/types/user";
 import { BaseApi } from "./base-api";
 import type { FetchOptions } from "./base-http-client";
@@ -20,11 +21,14 @@ export class UserApi extends BaseApi {
 		return this.patch<IUserProfile>(this.buildUrl("/profile"), data);
 	}
 
-	async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-		const body: IChangePasswordRequest = {
-			old_password: oldPassword,
-			new_password: newPassword,
-		};
-		return this.post<void>(this.buildUrl("/change-password"), body);
+	/**
+	 * Change the current user's password
+	 * @returns A new token pair; every other session is revoked
+	 */
+	async changePassword(
+		data: IChangePasswordRequest,
+		options?: Omit<FetchOptions, "json">,
+	): Promise<ILoginData> {
+		return this.post<ILoginData>(this.buildUrl("/change-password"), data, options);
 	}
 }

@@ -13,6 +13,7 @@ export function createAuthCredentialRecord(
     username: overrides.username ?? 'testuser',
     passwordHash: overrides.passwordHash ?? '$2b$12$hashedpassword',
     isActive: overrides.isActive ?? true,
+    tokenVersion: overrides.tokenVersion ?? 0,
   };
 }
 

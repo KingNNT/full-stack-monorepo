@@ -60,6 +60,7 @@ mise.local.*
 
 # pnpm
 pnpm-debug.log*
+.pnpm-store/
 
 # Storybook
 storybook-static/

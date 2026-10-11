@@ -73,3 +73,21 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "ses_identity_arns" {
+  description = "SES identities the app pods may send from (empty disables the policy)"
+  type        = list(string)
+  default     = []
+}
+
+variable "ses_configuration_set_arn" {
+  description = "SES configuration set used by the app pods"
+  type        = string
+  default     = ""
+}
+
+variable "ses_from_address" {
+  description = "Only sender address the app pods may use"
+  type        = string
+  default     = ""
+}

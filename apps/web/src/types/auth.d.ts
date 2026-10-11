@@ -3,6 +3,7 @@
  */
 
 import type { TAuthServiceErrorCode } from "@/constants/error-codes";
+import type { TLocale } from "@/i18n/config";
 import type { IErrorResponse, ISuccessResponse } from "@/types/api";
 import type { IUser } from "@/types/user";
 
@@ -46,3 +47,14 @@ export interface IRegisterSuccessResponse extends ISuccessResponse<IRegisterData
 export interface IRegisterErrorResponse extends IErrorResponse<TAuthServiceErrorCode> {}
 
 export type TRegisterResult = IRegisterSuccessResponse | IRegisterErrorResponse;
+
+export interface IForgotPasswordRequest {
+	email: string;
+	locale: TLocale;
+}
+
+export interface IResetPasswordRequest {
+	token: string;
+	new_password: string;
+	locale: TLocale;
+}

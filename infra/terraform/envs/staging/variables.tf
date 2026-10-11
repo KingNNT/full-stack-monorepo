@@ -21,3 +21,8 @@ variable "domain_name" {
   type        = string
   default     = "staging.example.com"
 }
+
+variable "dmarc_report_email" {
+  description = "Mailbox for DMARC aggregate reports"
+  type        = string
+}

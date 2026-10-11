@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, isNull, or } from 'drizzle-orm';
+import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { AuditableTableService } from '../../../../shared/infrastructure/database/auditable-table.service';
 import { DrizzleService } from '../../../../shared/infrastructure/database/drizzle.service';
 import { authCredentialsTable } from '../../../../shared/infrastructure/database/schema/auth-credentials.table';
@@ -25,6 +25,7 @@ export class AuthCredentialsRepository implements IAuthCredentialsRepository {
         username: authCredentialsTable.username,
         passwordHash: authCredentialsTable.passwordHash,
         isActive: authCredentialsTable.isActive,
+        tokenVersion: authCredentialsTable.tokenVersion,
       })
       .from(authCredentialsTable)
       .where(
@@ -75,6 +76,7 @@ export class AuthCredentialsRepository implements IAuthCredentialsRepository {
         username: authCredentialsTable.username,
         passwordHash: authCredentialsTable.passwordHash,
         isActive: authCredentialsTable.isActive,
+        tokenVersion: authCredentialsTable.tokenVersion,
       })
       .from(authCredentialsTable)
       .where(
@@ -111,5 +113,30 @@ export class AuthCredentialsRepository implements IAuthCredentialsRepository {
       )!,
       { passwordHash },
     );
+  }
+
+  async updatePasswordAndRevokeSessions(
+    userId: string,
+    passwordHash: string,
+  ): Promise<number> {
+    const where = and(
+      eq(authCredentialsTable.userId, userId),
+      isNull(authCredentialsTable.deletedAt),
+    )!;
+    await this.audit.update(authCredentialsTable, where, {
+      passwordHash,
+      tokenVersion: sql`${authCredentialsTable.tokenVersion} + 1`,
+    });
+
+    const results = await this.drizzle.db
+      .select({ tokenVersion: authCredentialsTable.tokenVersion })
+      .from(authCredentialsTable)
+      .where(where)
+      .limit(1);
+
+    if (results.length === 0) {
+      throw new Error(`No credentials for user ${userId}`);
+    }
+    return results[0].tokenVersion;
   }
 }

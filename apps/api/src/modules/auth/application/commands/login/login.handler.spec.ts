@@ -92,6 +92,22 @@ describe('LoginHandler', () => {
 
       expect(mockTokenService.generateTokenPair).toHaveBeenCalledWith(
         'user-789',
+        0,
+      );
+    });
+
+    it('signs the credential token version into the tokens', async () => {
+      const credential = createAuthCredentialRecord({ tokenVersion: 3 });
+      mockCredentials.findByEmailOrUsername.mockResolvedValue(credential);
+      mockHasher.verify.mockResolvedValue(true);
+
+      await handler.execute(
+        new LoginCommand('test@example.com', 'securePassword123'),
+      );
+
+      expect(mockTokenService.generateTokenPair).toHaveBeenCalledWith(
+        credential.userId,
+        3,
       );
     });
   });

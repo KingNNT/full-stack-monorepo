@@ -16,7 +16,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ChangePasswordCommand } from '../../../auth/application/commands/change-password/change-password.command';
-import type { JwtPayload } from '../../../auth/application/ports/token.service.interface';
+import type {
+  JwtPayload,
+  TokenPair,
+} from '../../../auth/application/ports/token.service.interface';
+import { TokenPairResponseDto } from '../../../auth/presentation/dtos/token-pair.response.dto';
 import { JwtAuthGuard } from '../../../auth/presentation/guards/jwt-auth.guard';
 import { UpdateProfileCommand } from '../../application/commands/update-profile/update-profile.command';
 import type { UpdateProfileResult } from '../../application/commands/update-profile/update-profile.result';
@@ -71,17 +75,28 @@ export class UsersController {
   }
 
   @Post('change-password')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Change current user password' })
-  @ApiResponse({ status: 204, description: 'Password updated' })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Change current user password; revokes every other session',
+  })
+  @ApiResponse({ status: 200, type: TokenPairResponseDto })
   @ApiResponse({ status: 401, description: 'Current password is incorrect' })
   async changePassword(
     @CurrentUser() user: JwtPayload,
     @Body() dto: ChangePasswordRequestDto,
-  ): Promise<void> {
-    await this.commandBus.execute<ChangePasswordCommand, void>(
-      new ChangePasswordCommand(user.sub, dto.old_password, dto.new_password),
+  ): Promise<TokenPairResponseDto> {
+    const pair = await this.commandBus.execute<
+      ChangePasswordCommand,
+      TokenPair
+    >(
+      new ChangePasswordCommand(
+        user.sub,
+        dto.old_password,
+        dto.new_password,
+        dto.locale ?? 'en',
+      ),
     );
+    return TokenPairResponseDto.from(pair);
   }
 
   private toProfileDto(result: GetProfileResult): UserProfileResponseDto {

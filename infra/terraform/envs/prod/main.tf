@@ -90,6 +90,17 @@ module "route53" {
   tags        = local.common_tags
 }
 
+module "ses" {
+  source = "../../modules/ses"
+
+  project_name       = var.project_name
+  environment        = var.environment
+  domain_name        = var.domain_name
+  zone_id            = module.route53.zone_id
+  dmarc_report_email = var.dmarc_report_email
+  tags               = local.common_tags
+}
+
 module "acm" {
   source = "../../modules/acm"
 
@@ -137,6 +148,9 @@ module "iam" {
   codepipeline_arns         = [module.codepipeline.pipeline_arn]
   terraform_state_bucket    = local.terraform_state_bucket
   terraform_lock_table      = local.terraform_lock_table
+  ses_identity_arns         = [module.ses.identity_arn]
+  ses_configuration_set_arn = module.ses.configuration_set_arn
+  ses_from_address          = "no-reply@${var.domain_name}"
   tags                      = local.common_tags
 }
 
@@ -175,6 +189,7 @@ module "codebuild" {
   secret_arns                   = values(module.secrets_manager.secret_arns)
   eks_cluster_security_group_id = module.eks.cluster_security_group_id
   lb_controller_role_arn        = module.alb.lb_controller_role_arn
+  app_pod_role_arn              = module.iam.app_pod_role_arn
   secret_env_vars = {
     DATABASE_URL       = module.secrets_manager.secret_names["api/DATABASE_URL"]
     JWT_ACCESS_SECRET  = module.secrets_manager.secret_names["api/JWT_ACCESS_SECRET"]

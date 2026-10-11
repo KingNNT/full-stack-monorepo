@@ -27,3 +27,8 @@ variable "web_origin_domain_name" {
   type        = string
   default     = ""
 }
+
+variable "dmarc_report_email" {
+  description = "Mailbox for DMARC aggregate reports"
+  type        = string
+}

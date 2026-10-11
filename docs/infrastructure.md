@@ -217,6 +217,29 @@ Terraform is **not** applied by the pipeline — see [Applying infrastructure](#
 
 ---
 
+## Email (SES)
+
+`infra/terraform/modules/ses` creates the domain identity (Easy DKIM), the
+custom MAIL FROM domain `mail.<domain>`, SPF and DMARC (`p=none`) records in
+the Route53 zone, and a configuration set with bounce/complaint suppression.
+API pods send through IRSA (`app_pod` role, `ses:FromAddress` pinned to
+`no-reply@<domain>`).
+
+Manual steps per region and environment:
+
+1. Request SES production access (Console → SES → Account dashboard). Until
+   then SES delivers only to verified addresses.
+2. If the domain's DNS is not hosted on Route53, copy the DKIM, MAIL FROM and
+   DMARC records from `terraform output ses_dns_records` into your DNS
+   provider.
+3. Watch bounce and complaint rates on the SES account dashboard; there is no
+   alerting yet. Raise DMARC to `p=quarantine` once reports are clean.
+
+Locally, mail goes to Mailpit (`http://localhost:8025`); in the kind cluster
+it goes to LocalStack (`GET http://localhost:4566/_aws/ses`).
+
+---
+
 ## Environment Comparison
 
 | Resource | Dev | Staging | Prod |

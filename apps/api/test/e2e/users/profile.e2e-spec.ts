@@ -37,12 +37,12 @@ describe('Users profile + change-password (e2e)', () => {
     await cleanDatabase(db);
 
     const reg = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send(initialUser);
     userId = reg.body.data.user_id as string;
 
     const login = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/v1/auth/login')
       .send({ identifier: initialUser.email, password: initialUser.password });
     accessToken = login.body.data.access_token as string;
   }, 120_000);
@@ -56,7 +56,7 @@ describe('Users profile + change-password (e2e)', () => {
   describe('GET /users/profile', () => {
     it('200 — returns current user profile', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users/profile')
+        .get('/api/v1/users/profile')
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
@@ -69,13 +69,15 @@ describe('Users profile + change-password (e2e)', () => {
     });
 
     it('401 — no token', async () => {
-      const res = await request(app.getHttpServer()).get('/users/profile');
+      const res = await request(app.getHttpServer()).get(
+        '/api/v1/users/profile',
+      );
       expect(res.status).toBe(401);
     });
 
     it('401 — invalid token', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users/profile')
+        .get('/api/v1/users/profile')
         .set('Authorization', 'Bearer not-a-real-token');
       expect(res.status).toBe(401);
     });
@@ -84,7 +86,7 @@ describe('Users profile + change-password (e2e)', () => {
   describe('PATCH /users/profile', () => {
     it('400 — invalid username (too short)', async () => {
       const res = await request(app.getHttpServer())
-        .patch('/users/profile')
+        .patch('/api/v1/users/profile')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ username: 'ab' });
 
@@ -93,7 +95,7 @@ describe('Users profile + change-password (e2e)', () => {
 
     it('401 — no token', async () => {
       const res = await request(app.getHttpServer())
-        .patch('/users/profile')
+        .patch('/api/v1/users/profile')
         .send({ username: 'whatever' });
       expect(res.status).toBe(401);
     });
@@ -102,7 +104,7 @@ describe('Users profile + change-password (e2e)', () => {
       const newUsername = 'renamed';
 
       const res = await request(app.getHttpServer())
-        .patch('/users/profile')
+        .patch('/api/v1/users/profile')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ username: newUsername });
 
@@ -123,7 +125,7 @@ describe('Users profile + change-password (e2e)', () => {
   describe('POST /users/change-password', () => {
     it('400 — new password too short', async () => {
       const res = await request(app.getHttpServer())
-        .post('/users/change-password')
+        .post('/api/v1/users/change-password')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ old_password: currentPassword, new_password: 'short' });
 
@@ -132,7 +134,7 @@ describe('Users profile + change-password (e2e)', () => {
 
     it('401 — wrong current password', async () => {
       const res = await request(app.getHttpServer())
-        .post('/users/change-password')
+        .post('/api/v1/users/change-password')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
           old_password: 'wrongOldPass',
@@ -144,7 +146,7 @@ describe('Users profile + change-password (e2e)', () => {
 
     it('401 — no token', async () => {
       const res = await request(app.getHttpServer())
-        .post('/users/change-password')
+        .post('/api/v1/users/change-password')
         .send({
           old_password: currentPassword,
           new_password: 'brandNewPass99',
@@ -152,27 +154,30 @@ describe('Users profile + change-password (e2e)', () => {
       expect(res.status).toBe(401);
     });
 
-    it('204 — changes password (verified via DB hash mutation)', async () => {
+    it('200 — changes password, returns a working pair, revokes the old token', async () => {
       const newPassword = 'brandNewPass99';
-
-      const beforeRows = await db
-        .select()
-        .from(authCredentialsTable)
-        .where(eq(authCredentialsTable.email, initialUser.email));
-      const oldHash = beforeRows[0].passwordHash;
+      const oldToken = accessToken;
 
       const res = await request(app.getHttpServer())
-        .post('/users/change-password')
+        .post('/api/v1/users/change-password')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ old_password: currentPassword, new_password: newPassword });
 
-      expect(res.status).toBe(204);
+      expect(res.status).toBe(200);
+      expect(typeof res.body.data.access_token).toBe('string');
+      expect(typeof res.body.data.refresh_token).toBe('string');
 
-      const afterRows = await db
-        .select()
-        .from(authCredentialsTable)
-        .where(eq(authCredentialsTable.email, initialUser.email));
-      expect(afterRows[0].passwordHash).not.toBe(oldHash);
+      const revoked = await request(app.getHttpServer())
+        .get('/api/v1/users/profile')
+        .set('Authorization', `Bearer ${oldToken}`);
+      expect(revoked.status).toBe(401);
+      expect(revoked.body.error).toBe('SESSION_REVOKED');
+
+      accessToken = res.body.data.access_token as string;
+      const fresh = await request(app.getHttpServer())
+        .get('/api/v1/users/profile')
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(fresh.status).toBe(200);
 
       currentPassword = newPassword;
     });

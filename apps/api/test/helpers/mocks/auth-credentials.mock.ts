@@ -8,5 +8,6 @@ export function createMockAuthCredentialsRepository(): jest.Mocked<IAuthCredenti
     updateLastLogin: jest.fn().mockResolvedValue(undefined),
     updateUsername: jest.fn().mockResolvedValue(undefined),
     updatePasswordHash: jest.fn().mockResolvedValue(undefined),
+    updatePasswordAndRevokeSessions: jest.fn().mockResolvedValue(1),
   };
 }

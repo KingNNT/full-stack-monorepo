@@ -7,12 +7,14 @@ export interface TokenPair {
 
 export interface JwtPayload {
   sub: string;
+  /** auth_credentials.token_version at issue time; a mismatch means revoked. */
+  tv: number;
   iat?: number;
   exp?: number;
 }
 
 export interface ITokenService {
-  generateTokenPair(userId: string): Promise<TokenPair>;
+  generateTokenPair(userId: string, tokenVersion: number): Promise<TokenPair>;
   verifyAccessToken(token: string): Promise<JwtPayload>;
   verifyRefreshToken(token: string): Promise<JwtPayload>;
 }

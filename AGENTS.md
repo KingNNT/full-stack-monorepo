@@ -49,14 +49,13 @@ Tasks are namespaced by environment: `local:*` (dev machine — apps, db,
 docker), `dev:*` (kind/LocalStack cluster), `staging:*` and `prod:*` (helm
 deploys). Task files live in `mise/tasks/<env>/` as executable bash scripts
 with a `#MISE description="…"` header; `mise tasks ls` lists them. Each
-directory level is a `:` segment (`mise/tasks/local/docker/up/api` →
-`local:docker:up:api`); a `_default` file names the directory itself
+directory level is a `:` segment (`mise/tasks/local/db/migrate` →
+`local:db:migrate`); a `_default` file names the directory itself
 (`local/test/_default` → `local:test`).
 Short aliases: `mise run dev | lint | test | typecheck`.
 
 ```bash
-mise run local:docker:up:api     # postgres + api containers
-mise run local:docker:up         # api + web + postgres
+mise run local:docker:up         # postgres + api + web + mailpit
 mise run local:docker:down       # stop all
 mise run local:docker:logs       # tail logs
 mise run local:db:generate       # migrations from schema changes

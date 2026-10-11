@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { context, trace } from '@opentelemetry/api';
 import { ClsService } from 'nestjs-cls';
@@ -17,6 +17,9 @@ import { CLS_REQUEST_ID, CLS_USER_ID } from '../cls/cls.constants';
         const level = config.get('LOG_LEVEL') ?? (isDev ? 'debug' : 'info');
 
         return {
+          // nestjs-pino defaults to the legacy '*' path, which Nest 11 warns
+          // about once the global prefix is applied.
+          forRoutes: [{ path: '/{*path}', method: RequestMethod.ALL }],
           pinoHttp: {
             level,
             genReqId: (req: IncomingMessage) => {
@@ -50,6 +53,9 @@ import { CLS_REQUEST_ID, CLS_USER_ID } from '../cls/cls.constants';
                 'req.body.passwordHash',
                 'req.body.accessToken',
                 'req.body.refreshToken',
+                'req.body.token',
+                'req.body.new_password',
+                'req.body.old_password',
               ],
               censor: '[REDACTED]',
             },

@@ -15,6 +15,20 @@
       "when": 1774599827984,
       "tag": "0001_calm_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791730002676,
+      "tag": "0002_add_token_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791731487016,
+      "tag": "0003_add_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }

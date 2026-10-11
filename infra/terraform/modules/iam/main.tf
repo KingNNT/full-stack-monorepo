@@ -245,3 +245,26 @@ resource "aws_iam_role_policy" "app_pod_s3" {
   role   = aws_iam_role.app_pod[0].id
   policy = data.aws_iam_policy_document.app_pod_s3[0].json
 }
+
+data "aws_iam_policy_document" "app_pod_ses" {
+  count = length(var.ses_identity_arns) > 0 ? 1 : 0
+
+  statement {
+    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = concat(var.ses_identity_arns, [var.ses_configuration_set_arn])
+
+    condition {
+      test     = "StringEquals"
+      variable = "ses:FromAddress"
+      values   = [var.ses_from_address]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "app_pod_ses" {
+  count = length(var.ses_identity_arns) > 0 && var.eks_oidc_provider_arn != "" ? 1 : 0
+
+  name   = "${var.project_name}-${var.environment}-app-pod-ses"
+  role   = aws_iam_role.app_pod[0].id
+  policy = data.aws_iam_policy_document.app_pod_ses[0].json
+}

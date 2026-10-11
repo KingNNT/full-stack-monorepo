@@ -8,6 +8,7 @@ export interface AuthCredentialRecord {
   username: string;
   passwordHash: string;
   isActive: boolean;
+  tokenVersion: number;
 }
 
 export interface IAuthCredentialsRepository {
@@ -24,4 +25,9 @@ export interface IAuthCredentialsRepository {
   updateLastLogin(userId: string, at: Date): Promise<void>;
   updateUsername(userId: string, username: string): Promise<void>;
   updatePasswordHash(userId: string, passwordHash: string): Promise<void>;
+  /** Sets a new password hash and revokes every session; returns the new token version. */
+  updatePasswordAndRevokeSessions(
+    userId: string,
+    passwordHash: string,
+  ): Promise<number>;
 }

@@ -36,7 +36,7 @@ describe('TokenServiceImpl (integration)', () => {
   });
 
   it('generateTokenPair() returns access and refresh tokens', async () => {
-    const pair = await tokenService.generateTokenPair('user-123');
+    const pair = await tokenService.generateTokenPair('user-123', 0);
 
     expect(pair.accessToken).toBeDefined();
     expect(pair.refreshToken).toBeDefined();
@@ -45,7 +45,7 @@ describe('TokenServiceImpl (integration)', () => {
   });
 
   it('verifyAccessToken() returns payload with sub', async () => {
-    const pair = await tokenService.generateTokenPair('user-456');
+    const pair = await tokenService.generateTokenPair('user-456', 0);
 
     const payload = await tokenService.verifyAccessToken(pair.accessToken);
 
@@ -53,7 +53,7 @@ describe('TokenServiceImpl (integration)', () => {
   });
 
   it('verifyRefreshToken() returns payload with sub', async () => {
-    const pair = await tokenService.generateTokenPair('user-789');
+    const pair = await tokenService.generateTokenPair('user-789', 0);
 
     const payload = await tokenService.verifyRefreshToken(pair.refreshToken);
 
@@ -61,7 +61,7 @@ describe('TokenServiceImpl (integration)', () => {
   });
 
   it('access token cannot be verified as refresh token', async () => {
-    const pair = await tokenService.generateTokenPair('user-123');
+    const pair = await tokenService.generateTokenPair('user-123', 0);
 
     await expect(
       tokenService.verifyRefreshToken(pair.accessToken),
@@ -69,7 +69,7 @@ describe('TokenServiceImpl (integration)', () => {
   });
 
   it('refresh token cannot be verified as access token', async () => {
-    const pair = await tokenService.generateTokenPair('user-123');
+    const pair = await tokenService.generateTokenPair('user-123', 0);
 
     await expect(
       tokenService.verifyAccessToken(pair.refreshToken),
@@ -82,8 +82,18 @@ describe('TokenServiceImpl (integration)', () => {
     ).rejects.toThrow();
   });
 
+  it('signs the token version into both tokens', async () => {
+    const pair = await tokenService.generateTokenPair('user-123', 7);
+
+    const access = await tokenService.verifyAccessToken(pair.accessToken);
+    const refresh = await tokenService.verifyRefreshToken(pair.refreshToken);
+
+    expect(access.tv).toBe(7);
+    expect(refresh.tv).toBe(7);
+  });
+
   it('access and refresh tokens are different', async () => {
-    const pair = await tokenService.generateTokenPair('user-123');
+    const pair = await tokenService.generateTokenPair('user-123', 0);
 
     expect(pair.accessToken).not.toBe(pair.refreshToken);
   });

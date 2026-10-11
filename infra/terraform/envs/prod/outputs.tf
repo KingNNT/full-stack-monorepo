@@ -70,3 +70,12 @@ output "pipeline_name" {
 output "pipeline_notification_topic" {
   value = module.codepipeline.notification_topic_arn
 }
+
+output "ses_dns_records" {
+  description = "SES DNS records to copy when the domain's DNS is not on Route53"
+  value = {
+    dkim      = module.ses.dkim_records
+    mail_from = module.ses.mail_from_records
+    dmarc     = module.ses.dmarc_record
+  }
+}
