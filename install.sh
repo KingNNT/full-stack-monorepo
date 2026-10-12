@@ -178,12 +178,14 @@ rename_project() {
 git_init_fresh() {
   log "Initializing fresh git repository..."
   rm -rf "$INSTALL_DIR/.git"
-  git init "$INSTALL_DIR"
+  # Git flow: main holds releases, develop is where work lands.
+  git init --initial-branch=main "$INSTALL_DIR"
   git -C "$INSTALL_DIR" config user.name "$GIT_USER_NAME"
   git -C "$INSTALL_DIR" config user.email "$GIT_USER_EMAIL"
   git -C "$INSTALL_DIR" add -A
   git -C "$INSTALL_DIR" commit -m "feat: initialize $PROJECT_NAME from full-stack-monorepo template"
-  log "Git repository initialized with clean history"
+  git -C "$INSTALL_DIR" switch -c develop
+  log "Git repository initialized with clean history (branches main, develop)"
 }
 
 detect_os() {
@@ -308,12 +310,6 @@ install_deps() {
 }
 
 print_next_steps() {
-  # git_init_fresh already ran, so HEAD exists. The branch name comes from the
-  # caller's init.defaultBranch and is not necessarily 'main'.
-  local branch
-  branch="$(git -C "$INSTALL_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-  [ -n "$branch" ] || branch="<your-branch>"
-
   cat <<EOF
 
 ==> Done! Your project '$PROJECT_NAME' is ready.
@@ -337,9 +333,11 @@ print_next_steps() {
     user.email: $GIT_USER_EMAIL
 
   This project has no 'origin' remote — the template's git history was replaced.
-  To push to your own remote:
+  To push to your own GitHub repo and set up the git flow release pipeline:
     git remote add origin <your-repo-url>
-    git push -u origin $branch
+    git push -u origin main develop
+    mise run github:setup         # default branch, rulesets, auto-merge (needs gh, repo admin)
+    gh secret set RELEASE_TOKEN   # token the release workflows push with (see docs/infrastructure.md)
 
 EOF
 }

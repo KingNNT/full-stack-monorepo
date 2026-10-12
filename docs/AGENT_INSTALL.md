@@ -56,8 +56,11 @@ What the script does, in order — know this before you run it:
    generating `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` (api) and `AUTH_SECRET` (web).
 5. Trusts the cloned `mise.toml` and runs `mise install`.
 6. **Deletes `install.sh`.**
-7. **Deletes `.git` and re-initializes it** with one commit. The template's
-   history is gone; the origin remote is gone.
+7. **Deletes `.git` and re-initializes it** with one commit on `main` and a
+   `develop` branch (checked out) for git flow. The template's history is
+   gone; the origin remote is gone. Configuring GitHub (`mise run
+   github:setup`, `RELEASE_TOKEN`) is the user's step after they push — do not
+   create remotes or push yourself.
 8. Runs `pnpm install`.
 
 Verify:

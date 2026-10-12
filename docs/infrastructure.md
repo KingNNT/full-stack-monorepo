@@ -385,6 +385,23 @@ A hotfix is the same with kind `hotfix`: it branches from `main` and bumps the
 patch version. Only one `release/*` and one `hotfix/*` may be open at a time;
 both deploy to the same staging, so the last push wins.
 
+### Setting up a project's GitHub repo
+
+`install.sh` creates `main` and `develop`. After creating the GitHub repo:
+
+```bash
+git remote add origin <your-repo-url>
+git push -u origin main develop
+mise run github:setup          # needs gh logged in as a repo admin
+gh secret set RELEASE_TOKEN    # see below
+```
+
+`github:setup` makes `develop` the default branch, enables auto-merge (used by
+the back-merge PRs) and creates or updates the rulesets below, matched by name,
+so re-running it after changing the task is safe. `REQUIRED_APPROVALS=0 mise
+run github:setup` drops the review requirement for a solo project. Rulesets on
+a private repo need a paid GitHub plan.
+
 ### Release token
 
 Pushes, tags and PRs made with `GITHUB_TOKEN` do not trigger other workflows,
@@ -397,11 +414,13 @@ directly.
 
 ### Repository rulesets
 
+Created by `mise run github:setup`:
+
 | Ruleset | Targets | Rules |
 |---|---|---|
-| `develop` | `develop` | PR required (squash or merge), CI + PR checks pass, no force-push or deletion |
-| `main` | `main` | PR required (merge commit only), CI + PR checks pass, no force-push or deletion |
-| `release branches` | `release/**`, `hotfix/**` | PR required, CI + PR checks pass, no force-push |
+| `develop` | `develop` | PR required (squash or merge), CI + PR checks (`policy`) pass, no force-push or deletion |
+| `main` | `main` | PR required (merge commit only), CI + PR checks (`policy`) pass, no force-push or deletion |
+| `release branches` | `release/**`, `hotfix/**` | PR required, CI + PR checks (`policy`) pass, no force-push |
 | `release tags` | `v*` tags | Only admins create, move or delete them |
 
 Repository admins bypass all of them.
