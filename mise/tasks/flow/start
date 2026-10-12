@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#MISE description="Start a branch off the right base: flow:start <type> <name> [--from <base>] [--dry-run]"
+# Types and bases follow tools/release/check-branch.sh; release/* and hotfix/*
+# come from flow:release instead. Records the base for flow:pr; does not push.
+set -euo pipefail
+# shellcheck source=tools/flow/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/flow/lib.sh"
+
+usage="usage: mise run flow:start <type> <name> [--from <base>] [--dry-run]"
+type="" name="" from=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --from)
+      [ $# -ge 2 ] || die "--from needs a branch; $usage"
+      from="$2"
+      shift 2
+      ;;
+    --dry-run)
+      FLOW_DRY_RUN=1
+      shift
+      ;;
+    -*) die "unknown option '$1'; $usage" ;;
+    *)
+      if [ -z "$type" ]; then type="$1"; else name="${name:+$name }$1"; fi
+      shift
+      ;;
+  esac
+done
+[ -n "$type" ] && [ -n "$name" ] || die "$usage"
+
+case "$type" in
+  release | hotfix) die "$type branches are cut by the Start release workflow; run: mise run flow:release $type" ;;
+  bugfix) base="${from:-develop}" ;;
+  feature | refactor | chore | docs | test | ci | perf | style | build | revert)
+    [ -z "$from" ] || [ "$from" = develop ] || die "$type branches start from develop; only bugfix takes --from"
+    base=develop
+    ;;
+  *) die "unknown type '$type'; use one of: feature, bugfix, refactor, chore, docs, test, ci, perf, style, build, revert" ;;
+esac
+
+slug="$(printf '%s' "$name" | LC_ALL=C tr '[:upper:]' '[:lower:]' \
+  | LC_ALL=C sed -E 's/[^a-z0-9._-]+/-/g; s/^[-._]+//; s/[-._]+$//')"
+[ -n "$slug" ] || die "name '$name' is empty once reduced to [a-z0-9._-]"
+branch="$type/$slug"
+
+require_clean_tree
+fetch_origin
+
+if [ "$type" = bugfix ]; then
+  open="$(open_branches release; open_branches hotfix)"
+  if [ "$base" != develop ]; then
+    grep -qxF -- "$base" <<<"$open" \
+      || die "'$base' is not an open release/hotfix branch (open: ${open:-none})"
+  elif [ -n "$open" ]; then
+    echo "note: open release/hotfix branch(es): ${open//$'\n'/, } — to fix one of them, pass --from <branch>" >&2
+  fi
+fi
+
+"$RELEASE_DIR/check-branch.sh" "$branch" "$base" >/dev/null
+if git rev-parse -q --verify "refs/heads/$branch" >/dev/null \
+  || git rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null; then
+  die "branch '$branch' already exists"
+fi
+
+run git switch --no-track -c "$branch" "origin/$base"
+run git config "branch.$branch.flowBase" "$base"
+[ "$FLOW_DRY_RUN" = 1 ] || echo "On $branch (base: $base). Commit your work, then: mise run flow:pr"

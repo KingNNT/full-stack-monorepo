@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+#MISE description="Cut a release (from develop) or hotfix (from main) via the Start release workflow: flow:release [release|hotfix] [--bump auto|patch|minor|major] [--version X.Y.Z] [--dry-run]"
+# The workflow creates the branch, bumps every package.json and opens the PR
+# into main; pushing the branch deploys it to staging.
+set -euo pipefail
+# shellcheck source=tools/flow/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/flow/lib.sh"
+
+usage="usage: mise run flow:release [release|hotfix] [--bump auto|patch|minor|major] [--version X.Y.Z] [--dry-run]"
+kind=release bump=auto version=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    release | hotfix)
+      kind="$1"
+      shift
+      ;;
+    --bump)
+      [ $# -ge 2 ] || die "$usage"
+      bump="$2"
+      shift 2
+      ;;
+    --version)
+      [ $# -ge 2 ] || die "$usage"
+      version="$2"
+      shift 2
+      ;;
+    --dry-run)
+      FLOW_DRY_RUN=1
+      shift
+      ;;
+    *) die "unknown argument '$1'; $usage" ;;
+  esac
+done
+case "$bump" in
+  auto | patch | minor | major) ;;
+  *) die "--bump must be auto, patch, minor or major" ;;
+esac
+
+require_gh
+fetch_origin
+require_main
+
+open="$(open_branches "$kind")"
+[ -z "$open" ] || die "a $kind branch is already open: $open — finish it first: mise run flow:finish $kind"
+
+if secrets="$(gh secret list --json name --jq '.[].name' 2>/dev/null)"; then
+  grep -qx RELEASE_TOKEN <<<"$secrets" \
+    || die "the RELEASE_TOKEN secret is missing; see docs/infrastructure.md#release-token"
+else
+  echo "warning: could not list secrets to check RELEASE_TOKEN (needs repo admin); continuing" >&2
+fi
+
+from=develop
+[ "$kind" = release ] || from=main
+last="$(latest_tag origin/main)"
+current="${last#v}"
+if [ -n "$version" ]; then
+  is_version "$version" || die "--version '$version' is not X.Y.Z"
+  version_gt "$version" "${current:-0.0.0}" || die "$version is not newer than the last release ${last:-none}"
+  next="$version"
+else
+  # shellcheck disable=SC2209 # bump is a literal keyword, not a command
+  [ "$kind" = release ] || [ "$bump" != auto ] || bump=patch
+  next="$(next_version "origin/$from" "$bump")"
+fi
+echo "Starting $kind/$next from $from (last release: ${last:-none})"
+
+latest_run() {
+  gh run list --workflow release-start.yml --limit 1 --json databaseId --jq '.[0].databaseId // empty'
+}
+prev="$(latest_run)"
+
+args=(workflow run release-start.yml --ref develop -f "kind=$kind" -f "bump=$bump")
+[ -z "$version" ] || args+=(-f "version=$version")
+run gh "${args[@]}"
+[ "$FLOW_DRY_RUN" = 1 ] && exit 0
+
+new_run() {
+  local id
+  id="$(latest_run)"
+  [ -n "$id" ] && [ "$id" != "$prev" ] && echo "$id"
+}
+run_id="$(poll_for new_run)" \
+  || die "dispatched, but no new run showed up; check: gh run list --workflow release-start.yml"
+gh run watch "$run_id" --exit-status
+pr_url="$(gh pr list --base main --state open --json url,headRefName \
+  --jq ".[] | select(.headRefName | startswith(\"$kind/\")) | .url")"
+[ -n "$pr_url" ] || die "release-start.yml finished but no $kind PR into main was found"
+echo "Release PR: $pr_url"
+echo "Staging deploys from $kind/$next. Verify it there, then: mise run flow:finish $kind"

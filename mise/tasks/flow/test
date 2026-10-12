@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Shellcheck and test the flow:* tasks: flow:test [name-filter]"
+set -euo pipefail
+shellcheck -x tools/flow/lib.sh tools/flow/test/run.sh tools/flow/test/gh tools/flow/test/commitlint mise/tasks/flow/*
+tools/flow/test/run.sh "$@"

@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#MISE description="Show git flow state: open releases and their PRs, back-merges, recent runs, next version"
+set -euo pipefail
+# shellcheck source=tools/flow/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/flow/lib.sh"
+
+[ $# -eq 0 ] || die "unknown argument '$1'; usage: mise run flow:status"
+
+require_gh
+fetch_origin_or_warn
+
+echo "== Branch"
+branch="$(git branch --show-current)"
+if [ -n "$branch" ]; then
+  echo "$branch (base: $(git config "branch.$branch.flowBase" || echo unknown))"
+else
+  echo "detached HEAD"
+fi
+
+echo
+echo "== Release/hotfix branches"
+if open="$(open_branches release 2>/dev/null && open_branches hotfix 2>/dev/null)"; then
+  echo "${open:-none}"
+else
+  echo "(unavailable)"
+fi
+gh pr list --base main --state open \
+  --json number,headRefName,baseRefName,reviewDecision,mergeable,statusCheckRollup,url \
+  --jq "$JQ_DEFS"' .[] | select(.headRefName | test("^(release|hotfix)/"))
+    | "#\(.number) \(.headRefName) → \(.baseRefName)  checks:\(checks) review:\(review) mergeable:\(.mergeable)  \(.url)"' \
+  || echo "  (unavailable)"
+
+echo
+echo "== Back-merge PRs"
+back_merges="$(gh pr list --state open --limit 100 --json number,headRefName,baseRefName,statusCheckRollup,url \
+  --jq "$JQ_DEFS"' .[] | select(.headRefName | startswith("chore/back-merge-v"))
+    | "#\(.number) \(.headRefName) → \(.baseRefName)  checks:\(checks)  \(.url)"')"
+echo "${back_merges:-none}"
+
+echo
+echo "== Recent runs"
+for workflow in release-start.yml release-finish.yml deploy.yml; do
+  echo "$workflow:"
+  gh run list --workflow "$workflow" --limit 3 --json status,conclusion,headBranch,createdAt,url \
+    --jq '.[] | "  \(.createdAt[:16]) \(.status)/\(if .conclusion == "" then "-" else .conclusion end) \(.headBranch)  \(.url)"' \
+    || echo "  (unavailable)"
+done
+
+echo
+echo "== Versions"
+if ! has_main; then
+  echo "latest tag: unknown (origin/main missing)"
+  echo "next release: unknown (origin/main missing)"
+  exit 0
+fi
+last="$(latest_tag origin/main)"
+echo "latest tag: ${last:-none}"
+if next="$(next_version origin/develop 2>/dev/null)"; then
+  echo "next release (auto): v$next"
+else
+  echo "next release: nothing to release on develop"
+fi
