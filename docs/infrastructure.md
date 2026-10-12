@@ -325,15 +325,86 @@ Everything          → Grafana        → Dashboards + Explore
 
 ### Git flow
 
+```
+feature/*, bugfix/* ──PR (squash)──▶ develop
+develop ──"Start release"──▶ release/X.Y.Z ──PR (merge commit)──▶ main ──▶ tag vX.Y.Z ──▶ prod
+main    ──"Start release" (hotfix)──▶ hotfix/X.Y.Z ──PR (merge commit)──▶ main ──▶ tag vX.Y.Z ──▶ prod
+main ──back-merge PR (merge commit)──▶ develop (+ any open release/*)
+```
+
+One version for the whole repo: `package.json`, `apps/api/package.json` and
+`apps/web/package.json` always carry the same `X.Y.Z`, and the tag is `vX.Y.Z`.
+
 | Branch / ref | What runs |
 |---|---|
-| `feature/*`, `bugfix/*` → PR into `develop` | CI (`ci.yml`: affected lint, typecheck, test, build + Docker build check) |
+| any PR | CI (`ci.yml`: affected lint, typecheck, test, build + Docker build check) and PR checks (`pr-checks.yml`) |
 | push to `develop` / `main` | CI |
 | push to `release/*`, `hotfix/*` | Deploy to **staging** (`deploy.yml`) |
-| tag `v*` (cut on `main` after merging a release/hotfix) | Deploy to **prod** (`deploy.yml`, CodePipeline manual approval) |
+| push to `main` (a merged release/hotfix PR) | `release-finish.yml`: tag `vX.Y.Z`, GitHub Release, back-merge PRs |
+| tag `vX.Y.Z` | Deploy to **prod** (`deploy.yml`, CodePipeline manual approval) |
 | PR touching `infra/terraform/**` | `infra-plan.yml`: fmt + validate for every env, `plan` for staging/prod when their plan role secret exists |
 
-`deploy.yml` can also be run by hand (`workflow_dispatch`); prod is only accepted on a `v*` tag.
+`deploy.yml` can also be run by hand (`workflow_dispatch`). prod is only
+accepted on a `vX.Y.Z` tag that is on `main` and whose release/hotfix merge
+changed nothing relative to the branch head staging tested — prod rebuilds the
+images (the accounts have separate ECRs), so this keeps its source identical to
+what passed staging.
+
+### PR checks
+
+`pr-checks.yml` enforces, via `tools/release/check-branch.sh` and
+`check-release.sh`:
+
+- Branch names `<type>/<kebab-case>` (`feature`, `bugfix`, `hotfix`, `release`,
+  `refactor`, `chore`, `docs`, `test`, `ci`, `perf`, `style`, `build`,
+  `revert`); `release/*` and `hotfix/*` are `X.Y.Z`.
+- Only `release/*` and `hotfix/*` merge into `main`, never into `develop`;
+  `feature/*` never merges into a `release/*` or `hotfix/*` branch.
+- A PR into `main` has every `package.json` at one version newer than the last
+  tag, and already contains `main` (otherwise prod would ship an untested mix).
+- The PR title is a Conventional Commit — on squash it becomes the commit on
+  `develop`, and the next version is computed from those commits.
+
+### Releasing
+
+1. **Actions → Start release → Run workflow**, kind `release`. The version
+   comes from the Conventional Commits on `develop` since the last tag
+   (`feat` → minor, `fix`/other → patch, `!` or `BREAKING CHANGE:` → major);
+   override with `bump` or an exact `version`. It cuts `release/X.Y.Z`, bumps
+   every `package.json`, pushes (→ staging) and opens the PR into `main`.
+2. Verify on staging. Fixes go in as `bugfix/*` PRs into `release/X.Y.Z`;
+   each push redeploys staging.
+3. Merge the PR with **Create a merge commit**. `release-finish.yml` tags
+   `vX.Y.Z` (→ prod, after the CodePipeline approval), publishes the GitHub
+   Release with generated notes, and opens `chore/back-merge-vX.Y.Z` PRs into
+   `develop` and any open `release/*`.
+4. Merge the back-merge PRs with **Create a merge commit** — a squash leaves
+   `develop` without `main`'s history, and the next release PR fails its check.
+
+A hotfix is the same with kind `hotfix`: it branches from `main` and bumps the
+patch version. Only one `release/*` and one `hotfix/*` may be open at a time;
+both deploy to the same staging, so the last push wins.
+
+### Release token
+
+Pushes, tags and PRs made with `GITHUB_TOKEN` do not trigger other workflows,
+so `release-start.yml` and `release-finish.yml` use a `RELEASE_TOKEN` repository
+secret instead: a fine-grained personal access token (or GitHub App token) on
+this repository with **Contents**, **Pull requests** and **Workflows**
+read/write. Its owner must be able to bypass the rulesets (repository admin),
+since the workflows push the release branch, the version bump and the tag
+directly.
+
+### Repository rulesets
+
+| Ruleset | Targets | Rules |
+|---|---|---|
+| `develop` | `develop` | PR required (squash or merge), CI + PR checks pass, no force-push or deletion |
+| `main` | `main` | PR required (merge commit only), CI + PR checks pass, no force-push or deletion |
+| `release branches` | `release/**`, `hotfix/**` | PR required, CI + PR checks pass, no force-push |
+| `release tags` | `v*` tags | Only admins create, move or delete them |
+
+Repository admins bypass all of them.
 
 ### GitHub Actions → AWS
 

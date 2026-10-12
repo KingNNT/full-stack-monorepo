@@ -1,0 +1,94 @@
+name: Finish release
+
+# After a release/* or hotfix/* PR merges into main: tag vX.Y.Z (the tag push
+# deploys to prod via deploy.yml), publish the GitHub Release, and open
+# back-merge PRs into develop and any open release branch.
+#
+# Uses the RELEASE_TOKEN secret: a tag pushed with GITHUB_TOKEN would not
+# trigger the prod deploy, and its PRs would not run CI.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-finish
+  cancel-in-progress: false
+
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require RELEASE_TOKEN
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          [[ -n "$RELEASE_TOKEN" ]] || {
+            echo "::error::Set the RELEASE_TOKEN secret (see docs/infrastructure.md#release-token)"
+            exit 1
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Tag
+        id: tag
+        run: |
+          source tools/release/lib.sh
+          tag="v$(read_version package.json)"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::notice::$tag already exists; nothing to release"
+            exit 0
+          fi
+          prev="$(latest_tag HEAD)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+          {
+            echo "tag=$tag"
+            echo "prev=$prev"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: GitHub Release
+        if: steps.tag.outputs.tag
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          PREV: ${{ steps.tag.outputs.prev }}
+        run: |
+          gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes \
+            ${PREV:+--notes-start-tag "$PREV"}
+
+      # A branch off main rather than main itself, so conflicts can be resolved
+      # on it. Merge commits only: a squash would leave develop without main's
+      # history and fail the next release check.
+      - name: Back-merge
+        if: steps.tag.outputs.tag
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          branch="chore/back-merge-$TAG"
+          git switch -c "$branch"
+          git push origin "$branch"
+
+          bases=(develop)
+          for b in $(git ls-remote --heads origin 'refs/heads/release/*' | sed 's|.*refs/heads/||'); do
+            git merge-base --is-ancestor "origin/$b" HEAD || bases+=("$b")
+          done
+
+          for base in "${bases[@]}"; do
+            url="$(gh pr create --base "$base" --head "$branch" \
+              --title "chore(release): back-merge $TAG into $base" \
+              --body "Brings $TAG from main into \`$base\`. Merge with **Create a merge commit** — not squash.")"
+            echo "Opened $url" | tee -a "$GITHUB_STEP_SUMMARY"
+            gh pr merge "$url" --auto --merge \
+              || echo "::notice::Auto-merge unavailable for $url; merge it by hand with a merge commit"
+          done

@@ -1,0 +1,116 @@
+name: Start release
+
+# Cuts release/X.Y.Z from develop (or hotfix/X.Y.Z from main), bumps every
+# package.json to X.Y.Z and opens the PR into main. Pushing the branch deploys
+# it to staging (deploy.yml).
+#
+# Uses the RELEASE_TOKEN secret: pushes and PRs made with GITHUB_TOKEN do not
+# trigger other workflows, so CI, PR checks and the staging deploy would never run.
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "release (from develop) or hotfix (from main)"
+        required: true
+        type: choice
+        options:
+          - release
+          - hotfix
+      bump:
+        description: "auto = from Conventional Commits since the last tag (hotfix: patch)"
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+      version:
+        description: "Exact version X.Y.Z (overrides bump)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-start
+  cancel-in-progress: false
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require RELEASE_TOKEN
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          [[ -n "$RELEASE_TOKEN" ]] || {
+            echo "::error::Set the RELEASE_TOKEN secret (see docs/infrastructure.md#release-token)"
+            exit 1
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.kind == 'hotfix' && 'main' || 'develop' }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Pick version
+        id: version
+        env:
+          KIND: ${{ inputs.kind }}
+          BUMP: ${{ inputs.bump }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          source tools/release/lib.sh
+
+          open="$(git ls-remote --heads origin "refs/heads/$KIND/*" | sed 's|.*refs/heads/||')"
+          if [[ -n "$open" ]]; then
+            echo "::error::A $KIND branch is already open: $open — finish it first"
+            exit 1
+          fi
+
+          last="$(latest_tag origin/main)"
+          current="${last#v}"
+          current="${current:-0.0.0}"
+          if [[ -n "$VERSION" ]]; then
+            next="$VERSION"
+            is_version "$next" || { echo "::error::Not a version: $next"; exit 1; }
+            version_gt "$next" "$current" || { echo "::error::$next is not newer than $current"; exit 1; }
+          else
+            [[ "$KIND" == hotfix && "$BUMP" == auto ]] && BUMP="patch"
+            next="$(git log --no-merges --format=%B%x00 ${last:+"$last..HEAD"} \
+              | tools/release/next-version.sh "$current" "$BUMP" 2>&1)" \
+              || { echo "::error::$next"; exit 1; }
+          fi
+
+          echo "Previous release: ${last:-none}; next: v$next"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Create branch and PR
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          KIND: ${{ inputs.kind }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          branch="$KIND/$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          tools/release/set-version.sh "$VERSION"
+          git commit -am "chore(release): prepare v$VERSION"
+          git push origin "$branch"
+
+          url="$(gh pr create --base main --head "$branch" \
+            --title "chore(release): v$VERSION" \
+            --body "$(cat <<BODY
+          Release **v$VERSION**. Pushing \`$branch\` deploys it to **staging**.
+
+          - Verify on staging; land fixes as \`bugfix/*\` PRs into \`$branch\` (each push redeploys staging).
+          - Merge with **Create a merge commit** (main only allows merge commits).
+          - Merging tags \`v$VERSION\`, deploys it to **prod** (manual approval in CodePipeline), publishes the GitHub Release and opens the back-merge PR into \`develop\`.
+          BODY
+          )")"
+          echo "Opened $url" | tee -a "$GITHUB_STEP_SUMMARY"

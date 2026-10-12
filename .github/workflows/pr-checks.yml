@@ -1,0 +1,52 @@
+name: PR checks
+
+# Git flow policy: branch names, which branch merges into which, release
+# versioning, and a Conventional Commits PR title (squash merges use it as the
+# commit message on develop).
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      # The PR head, not the merge commit: the release check needs to see
+      # whether the branch itself already contains the base.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Branch name and target
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: tools/release/check-branch.sh "$HEAD_REF" "$BASE_REF"
+
+      - name: Release version
+        if: github.base_ref == 'main'
+        run: tools/release/check-release.sh origin/main
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$TITLE" | pnpm exec commitlint
