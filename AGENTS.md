@@ -15,7 +15,7 @@ versions (Node LTS, pnpm) and task shortcuts are managed by
 
 1. **pnpm only.** Never run `npm`, `npx`, or `yarn`. Use `pnpm`, `pnpm exec`, `pnpm dlx`.
 2. **Never modify, print, or commit an existing `.env`** (`apps/<app>/.env*`) — create it from that app's `.env.example` only when it is absent.
-3. **Never commit, push, or create branches** unless the user explicitly asks.
+3. **Never commit, push, or create branches** unless the user explicitly asks. When asked, use the `mise run flow:*` tasks (see *Git flow* below).
 4. **Never run `mise run local:docker:clean`** — it destroys database volumes.
 
 ## Scoped instructions — read before editing
@@ -53,6 +53,20 @@ directory level is a `:` segment (`mise/tasks/local/db/migrate` →
 `local:db:migrate`); a `_default` file names the directory itself
 (`local/test/_default` → `local:test`).
 Short aliases: `mise run lint | test | typecheck`.
+
+**Git flow.** The `flow:*` tasks wrap branches, PRs and releases with the same
+checks CI runs; those that push, merge or start a workflow take `--dry-run`.
+Agents follow the `git-flow` skill (`.agents/skills/git-flow/SKILL.md`); the
+flow itself is in [`docs/infrastructure.md`](docs/infrastructure.md#git-flow).
+
+```bash
+mise run flow:status                 # open releases, PRs, runs, next version
+mise run flow:start feature <name>   # branch off the right base
+mise run flow:pr                     # push + PR into that base
+mise run flow:release [hotfix]       # Start release workflow → staging
+mise run flow:finish                 # merge release PR → tag → prod
+mise run flow:back-merge             # merge the back-merge PRs
+```
 
 The apps run only in Docker — there is no host `pnpm dev`. `local:db:*` tasks
 run inside the `api` container; Mailpit SMTP is reachable only on the compose
