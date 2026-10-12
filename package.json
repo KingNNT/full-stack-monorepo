@@ -10,6 +10,7 @@
     "lint": "nx run-many -t lint",
     "test": "nx run-many -t test",
     "test:install": "bats tests/install",
+    "test:release": "bats tests/release",
     "typecheck": "nx run-many -t typecheck",
     "storybook:web": "nx storybook web",
     "prepare": "husky"

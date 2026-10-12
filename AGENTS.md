@@ -82,8 +82,11 @@ mise run local:db:studio
   commit-msg runs commitlint.
 - **Commits**: Conventional Commits (`feat(api): …`, `fix(web): …`).
 - **CI/CD** (git flow): CI (`pnpm nx affected -t lint typecheck test build`)
-  runs on PRs and pushes to `develop`/`main`; `release/*` and `hotfix/*`
-  deploy to staging, `v*` tags deploy to prod. Details in
+  and PR checks (branch names, merge targets, PR title) run on PRs; `feature/*`
+  and `bugfix/*` merge into `develop`; the **Start release** workflow cuts
+  `release/X.Y.Z` (or `hotfix/X.Y.Z`), which deploys to staging; merging it
+  into `main` tags `vX.Y.Z`, deploys to prod and opens the back-merge PR. One
+  version for the repo. Details in
   [`docs/infrastructure.md`](docs/infrastructure.md#cicd-pipeline).
 
 ## Environment variables
