@@ -18,7 +18,6 @@ Run from `apps/api` (or `pnpm nx run api:<target>` from the root):
 pnpm test                  # unit (Jest, co-located *.spec.ts)
 pnpm test:integration      # TestContainers + PostgreSQL — needs Docker
 pnpm test:e2e
-pnpm dev:api               # from root; port 8000 — conflicts with the api container
 ```
 
 Health check: `GET /v1/health` (URI-versioned; `/health` is a 404).

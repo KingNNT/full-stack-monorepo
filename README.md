@@ -98,11 +98,9 @@ mise run local:db:migrate
 # Seed RBAC data + default users (registers them through the API, so it must be up)
 mise run local:db:seed
 
-# Start development — stop the api container first, it holds port 8000:
-#   docker compose stop api
-mise run dev       # both apps
-pnpm dev:api       # API only (port 8000)
-pnpm dev:web       # Web only (port 3000)
+# Both apps now run in watch mode inside the containers:
+#   Web http://localhost:3000, API http://localhost:8000
+# Postgres and Mailpit SMTP are not published to the host.
 
 # API health check (the path is versioned)
 curl http://localhost:8000/v1/health
@@ -156,11 +154,6 @@ mise/tasks/         mise task scripts per environment (local, dev, staging, prod
 ## Commands
 
 ```bash
-# Development
-mise run dev              # Run both apps
-pnpm dev:api              # API only
-pnpm dev:web              # Web only
-
 # Quality
 pnpm build                # Build all
 mise run lint             # Biome lint
@@ -178,11 +171,11 @@ pnpm storybook:web        # Start Storybook dev server (Web)
 # Database
 mise run local:db:generate      # Generate migrations from schema
 mise run local:db:migrate       # Run migrations
-mise run local:db:studio        # Open Drizzle Studio
+mise run local:db:studio        # Open Drizzle Studio (port 4983)
 mise run local:db:seed          # Seed RBAC data
 
 # Docker
-mise run local:docker:up        # Build and start all services
+mise run local:docker:up        # Build and start all services (apps in watch mode)
 mise run local:docker:down      # Stop all
 mise run local:docker:logs      # Tail logs
 mise run local:docker:clean     # Remove volumes and images — deletes the database

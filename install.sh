@@ -224,7 +224,7 @@ check_docker() {
     log "Docker $(docker --version | awk '{print $3}' | tr -d ,) OK"
     return 0
   fi
-  warn "Docker not found. The app can run without it, but 'mise run local:docker:up' and integration tests need it."
+  warn "Docker not found. The apps run only in Docker ('mise run local:docker:up'); integration tests need it too."
   warn "  macOS: https://docs.docker.com/desktop/install/mac-install/"
   warn "  Linux: https://docs.docker.com/engine/install/"
 }
@@ -320,15 +320,13 @@ print_next_steps() {
 
   cd $INSTALL_DIR
 
-  # Start PostgreSQL, the API, the web app and Mailpit with Docker (recommended).
+  # Start PostgreSQL, the API, the web app and Mailpit with Docker.
   # The first run builds the images and can take several minutes.
   mise run local:docker:up
   mise run local:db:migrate
   mise run local:db:seed        # needs the API from the step above
 
-  # Or run both apps locally without Docker (stop the app containers first,
-  # they hold ports 8000 and 3000): docker compose stop api web
-  mise run dev
+  # Both apps run in watch mode inside the containers.
 
   App:    http://localhost:3000
   API:    http://localhost:8000

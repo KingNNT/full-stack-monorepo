@@ -29,7 +29,6 @@ Run from `apps/web` (or `pnpm nx run web:<target>` from the root):
 ```bash
 pnpm test                  # Vitest — unit (co-located) + integration (tests/integration)
 pnpm test:e2e              # Playwright (e2e/)
-pnpm dev:web               # from root; port 3000
 pnpm storybook:web         # from root
 ```
 

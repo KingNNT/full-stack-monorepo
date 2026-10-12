@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-#MISE description="Generate migration files"
-pnpm nx run @fullstack-monorepo-app/api:db-generate
+#MISE description="Generate migration files (in the api container)"
+docker compose exec api pnpm db:generate

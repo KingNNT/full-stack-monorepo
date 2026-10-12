@@ -1,8 +1,6 @@
+# Everything runs in containers; Postgres and Mailpit SMTP stay on the
+# compose network. Published ports bind to loopback only.
 services:
-  postgres:
-    ports:
-      - "5432:5432"
-
   api:
     build:
       target: dev
@@ -19,12 +17,13 @@ services:
       - /app/apps/api/node_modules
       - /app/apps/web/node_modules
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+      # Drizzle Studio (mise run local:db:studio)
+      - "127.0.0.1:4983:4983"
 
   mailpit:
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:8025:8025"
 
   web:
     build:
@@ -40,4 +39,4 @@ services:
       - /app/apps/web/node_modules
       - /app/apps/web/.next
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
