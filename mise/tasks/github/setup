@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+#MISE description="Configure the GitHub repo for git flow: default branch, rulesets, auto-merge"
+# Run once after pushing main and develop; safe to re-run (rulesets are
+# matched by name and updated in place). Needs a gh login with admin rights on
+# the repo. REQUIRED_APPROVALS (default 1) sets the PR review count.
+set -euo pipefail
+
+repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+R="repos/$repo"
+echo "Configuring $repo as $(gh api user --jq .login)"
+
+for b in main develop; do
+  gh api "$R/branches/$b" --silent >/dev/null 2>&1 || {
+    echo "Branch '$b' is not on GitHub yet. Push both first: git push -u origin main develop" >&2
+    exit 1
+  }
+done
+
+gh api -X PATCH "$R" -f default_branch=develop -F allow_auto_merge=true --silent
+echo "Default branch: develop; auto-merge enabled"
+
+# Job names from ci.yml and pr-checks.yml; 15368 is the GitHub Actions app.
+checks='[{"context":"main","integration_id":15368},{"context":"docker-build (api)","integration_id":15368},{"context":"docker-build (web)","integration_id":15368},{"context":"policy","integration_id":15368}]'
+bypass='[{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"}]'
+approvals="${REQUIRED_APPROVALS:-1}"
+existing="$(gh api "$R/rulesets" --jq '.[] | "\(.id)\t\(.name)"')"
+
+upsert() { # <name>, ruleset JSON on stdin
+  local id
+  id="$(awk -F'\t' -v n="$1" '$2 == n {print $1}' <<<"$existing")"
+  if [ -n "$id" ]; then
+    gh api -X PUT "$R/rulesets/$id" --input - --silent
+    echo "Updated ruleset: $1"
+  else
+    gh api -X POST "$R/rulesets" --input - --silent
+    echo "Created ruleset: $1"
+  fi
+}
+
+branch_ruleset() { # <name> <include refs json> <merge methods json> <deletion: true|false>
+  local deletion=""
+  [ "$4" = true ] && deletion='{"type":"deletion"},'
+  cat <<JSON
+{"name":"$1","target":"branch","enforcement":"active","bypass_actors":$bypass,
+ "conditions":{"ref_name":{"include":$2,"exclude":[]}},
+ "rules":[$deletion
+  {"type":"non_fast_forward"},
+  {"type":"pull_request","parameters":{"required_approving_review_count":$approvals,"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_review_thread_resolution":false,"allowed_merge_methods":$3}},
+  {"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"required_status_checks":$checks}}
+ ]}
+JSON
+}
+
+branch_ruleset develop '["refs/heads/develop"]' '["squash","merge"]' true | upsert develop
+branch_ruleset main '["refs/heads/main"]' '["merge"]' true | upsert main
+# No deletion rule: release and hotfix branches are deleted once merged.
+branch_ruleset "release branches" '["refs/heads/release/**","refs/heads/hotfix/**"]' '["squash","merge"]' false \
+  | upsert "release branches"
+upsert "release tags" <<JSON
+{"name":"release tags","target":"tag","enforcement":"active","bypass_actors":$bypass,
+ "conditions":{"ref_name":{"include":["refs/tags/v*"],"exclude":[]}},
+ "rules":[{"type":"creation"},{"type":"update"},{"type":"deletion"}]}
+JSON
+
+if ! gh secret list --json name --jq '.[].name' | grep -qx RELEASE_TOKEN; then
+  cat <<'MSG'
+
+Next: add the RELEASE_TOKEN secret the release workflows push with — a
+fine-grained token on this repo with Contents, Pull requests and Workflows
+read/write, owned by a repo admin:
+  gh secret set RELEASE_TOKEN
+MSG
+fi

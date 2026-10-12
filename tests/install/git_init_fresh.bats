@@ -46,6 +46,23 @@ teardown() {
   [[ "$output" == *"feat: initialize"* ]]
 }
 
+@test "git_init_fresh: creates main and develop, with develop checked out" {
+  run bash -c "source '$INSTALL_SH'; INSTALL_DIR='$WORK_DIR'; GIT_USER_NAME='Test'; GIT_USER_EMAIL='test@test.com'; PROJECT_NAME='test-project'; git_init_fresh"
+  [ "$status" -eq 0 ]
+
+  [ "$(git -C "$WORK_DIR" rev-parse main)" = "$(git -C "$WORK_DIR" rev-parse develop)" ]
+  run git -C "$WORK_DIR" branch --show-current
+  [ "$output" = "develop" ]
+}
+
+@test "git_init_fresh: ignores the caller's init.defaultBranch" {
+  run bash -c "export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=init.defaultBranch GIT_CONFIG_VALUE_0=trunk; source '$INSTALL_SH'; INSTALL_DIR='$WORK_DIR'; GIT_USER_NAME='Test'; GIT_USER_EMAIL='test@test.com'; PROJECT_NAME='test-project'; git_init_fresh"
+  [ "$status" -eq 0 ]
+
+  run git -C "$WORK_DIR" branch --format='%(refname:short)'
+  [ "$output" = $'develop\nmain' ]
+}
+
 @test "git_init_fresh: all files are tracked" {
   run bash -c "source '$INSTALL_SH'; INSTALL_DIR='$WORK_DIR'; GIT_USER_NAME='Test'; GIT_USER_EMAIL='test@test.com'; PROJECT_NAME='test-project'; git_init_fresh"
   [ "$status" -eq 0 ]

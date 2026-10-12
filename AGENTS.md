@@ -46,7 +46,8 @@ pnpm nx affected -t lint typecheck test build   # what CI runs
 
 Tasks are namespaced by environment: `local:*` (dev machine — apps, db,
 docker), `dev:*` (kind/LocalStack cluster), `staging:*` and `prod:*` (helm
-deploys). Task files live in `mise/tasks/<env>/` as executable bash scripts
+deploys), plus `github:setup` (one-time git flow rulesets for a project's
+GitHub repo). Task files live in `mise/tasks/<env>/` as executable bash scripts
 with a `#MISE description="…"` header; `mise tasks ls` lists them. Each
 directory level is a `:` segment (`mise/tasks/local/db/migrate` →
 `local:db:migrate`); a `_default` file names the directory itself
