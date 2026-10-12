@@ -1,7 +1,9 @@
+# Everything runs in containers; Mailpit SMTP stays on the compose network.
+# Published ports bind to loopback only; override host ports from the shell.
 services:
   postgres:
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${HOST_MACHINE_POSTGRES_PORT:-5432}:5432"
 
   api:
     build:
@@ -19,12 +21,13 @@ services:
       - /app/apps/api/node_modules
       - /app/apps/web/node_modules
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${HOST_MACHINE_API_PORT:-8000}:8000"
+      # Drizzle Studio (mise run local:db:studio)
+      - "127.0.0.1:${HOST_MACHINE_DRIZZLE_STUDIO_PORT:-4983}:4983"
 
   mailpit:
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:${HOST_MACHINE_MAILPIT_PORT:-8025}:8025"
 
   web:
     build:
@@ -40,4 +43,4 @@ services:
       - /app/apps/web/node_modules
       - /app/apps/web/.next
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${HOST_MACHINE_WEB_PORT:-3000}:3000"

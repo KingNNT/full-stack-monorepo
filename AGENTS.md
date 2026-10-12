@@ -39,7 +39,6 @@ and the checklist you must satisfy before reporting success.
 ## Common commands
 
 ```bash
-pnpm dev                 # both apps in watch mode (dev:api / dev:web for one)
 pnpm build | lint | typecheck | test     # all apps via Nx
 pnpm nx run <api|web>:<target>           # single app, e.g. pnpm nx run api:test
 pnpm nx affected -t lint typecheck test build   # what CI runs
@@ -52,16 +51,25 @@ with a `#MISE description="…"` header; `mise tasks ls` lists them. Each
 directory level is a `:` segment (`mise/tasks/local/db/migrate` →
 `local:db:migrate`); a `_default` file names the directory itself
 (`local/test/_default` → `local:test`).
-Short aliases: `mise run dev | lint | test | typecheck`.
+Short aliases: `mise run lint | test | typecheck`.
+
+The apps run only in Docker — there is no host `pnpm dev`. `local:db:*` tasks
+run inside the `api` container; Mailpit SMTP is reachable only on the compose
+network. Published ports (loopback only, override from the shell): web 3000
+(`HOST_MACHINE_WEB_PORT`), api 8000 (`HOST_MACHINE_API_PORT`), Postgres 5432
+for GUI clients (`HOST_MACHINE_POSTGRES_PORT`), Mailpit UI 8025
+(`HOST_MACHINE_MAILPIT_PORT`), Drizzle Studio 4983
+(`HOST_MACHINE_DRIZZLE_STUDIO_PORT`). Tests, lint, typecheck and
+git hooks still run on the host.
 
 ```bash
-mise run local:docker:up         # postgres + api + web + mailpit
+mise run local:docker:up         # postgres + api + web + mailpit (watch mode)
 mise run local:docker:down       # stop all
 mise run local:docker:logs       # tail logs
 mise run local:db:generate       # migrations from schema changes
 mise run local:db:migrate
 mise run local:db:seed           # RBAC roles/permissions + default users (API must be up)
-mise run local:db:studio
+mise run local:db:studio         # https://local.drizzle.studio (port 4983)
 ```
 
 ## Layout

@@ -162,10 +162,11 @@ long-running command as a failure. Later runs reuse the cached layers.
 
 Outgoing email is captured by Mailpit: http://localhost:8025
 
-The api container publishes host port 8000 and the web container port 3000.
-Step 6 and §C depend on them, so leave them running, and do **not** start
-`mise run dev` while they are up — the nx targets bind the same ports and fail
-with `EADDRINUSE`.
+The apps run only in these containers, in watch mode. The api container
+publishes host port 8000 and the web container port 3000, and Postgres is on
+5432 for database clients (all loopback only); Mailpit SMTP
+is reachable only on the compose network. Steps 5–6 and §C depend on the containers, so leave them
+running.
 
 Verify:
 
@@ -182,7 +183,7 @@ If Docker is unavailable, see [§D](#d-troubleshooting).
 mise run local:db:migrate
 ```
 
-Verify: exit code 0.
+This runs `drizzle-kit migrate` inside the `api` container. Verify: exit code 0.
 
 ### Step 6 — Seed RBAC data
 
@@ -191,15 +192,14 @@ mise run local:db:seed
 ```
 
 Verify: exit code 0. This creates the baseline roles and permissions, and
-registers the default users by POSTing to
-`${API_BASE_URL:-http://localhost:8000}/api/v1/auth/register` — so **the API
-from step 4 must be running**, or this step fails partway through.
+registers the default users by POSTing to the API from inside the `api`
+container — so **the API from step 4 must be running**, or this step fails
+partway through.
 
 ## C. Smoke test
 
 Both apps are already running from step 4 (api on port 8000, web on 3000).
-**Do not run `mise run dev` here** — it would try to bind the same ports. Check
-the running containers.
+Check the running containers.
 
 ### API
 
@@ -259,8 +259,10 @@ mise run typecheck
 | `Cannot connect to the Docker daemon` | Docker not running | Start Docker Desktop (macOS) or `sudo systemctl start docker` (Linux) |
 | `404 Cannot GET /health` | `/health` is versioned; the mapped route is `/v1/health` | Use `http://localhost:8000/v1/health` |
 | `address already in use` on 8000 or 3000 | Another process holds the port | Identify it with `lsof -i :8000` (or `:3000`). If it is something *this runbook* started — the app containers (`docker compose stop api web`) — stop that. **Otherwise ask the user before killing anything you did not start.** |
-| `db-seed` fails with an HTTP error registering `admin@example.com` | No API listening on port 8000 | Bring up step 4's containers first, or point the seed at a running API with `API_BASE_URL` |
-| API cannot reach the database | Wrong host in `DATABASE_URL` | Inside Docker the host is `postgres`; from the host machine it is `localhost` |
+| `local:db:*` fails with `service "api" is not running` | The containers are down | Run step 4 first |
+| `db:seed` fails with an HTTP error registering `admin@example.com` | The API in the container is not up yet | Wait for `docker compose ps` to show `api` healthy, then re-run |
+| API cannot reach the database | Wrong host in `DATABASE_URL` | Inside the compose network the host is `postgres` (compose sets it for the api container) |
+| `address already in use` on 5432 | A host Postgres already holds the port | Start with another host port: `HOST_MACHINE_POSTGRES_PORT=5433 mise run local:docker:up` (likewise `HOST_MACHINE_API_PORT`, `HOST_MACHINE_WEB_PORT`, …) |
 | Pre-commit hook fails on gitleaks | No local binary and no Docker | `tools/bin/gitleaks` falls back to `docker run` — start Docker, or install gitleaks |
 | `Target directory already exists` from `install.sh` | `./<PROJECT_NAME>` is taken | Pick another `PROJECT_NAME`, or set `INSTALL_DIR` to a free path |
 | `install.sh` exits complaining about no terminal | Env vars missing under an agent | Set all three: `PROJECT_NAME`, `GIT_USER_NAME`, `GIT_USER_EMAIL` |
@@ -271,6 +273,6 @@ mise run typecheck
 - Commit, push, or create branches unless the user explicitly asks.
 - Use `npm`, `npx`, or `yarn`.
 - Run `mise run local:docker:clean` — it deletes volumes, and with them the database.
-- Run `mise run dev` in the foreground while the containers hold ports 8000 and 3000.
+- Run the apps on the host (`pnpm dev`, `nest start`, `next dev`) — they run only in Docker.
 - Kill a process or container you did not start. Ask the user first.
 - Report success without completing the §C checklist.

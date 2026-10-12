@@ -98,11 +98,10 @@ mise run local:db:migrate
 # Seed RBAC data + default users (registers them through the API, so it must be up)
 mise run local:db:seed
 
-# Start development — stop the api container first, it holds port 8000:
-#   docker compose stop api
-mise run dev       # both apps
-pnpm dev:api       # API only (port 8000)
-pnpm dev:web       # Web only (port 3000)
+# Both apps now run in watch mode inside the containers:
+#   Web http://localhost:3000, API http://localhost:8000
+# Postgres is on localhost:5432 for GUI clients;
+# Mailpit SMTP is not published to the host.
 
 # API health check (the path is versioned)
 curl http://localhost:8000/v1/health
@@ -156,11 +155,6 @@ mise/tasks/         mise task scripts per environment (local, dev, staging, prod
 ## Commands
 
 ```bash
-# Development
-mise run dev              # Run both apps
-pnpm dev:api              # API only
-pnpm dev:web              # Web only
-
 # Quality
 pnpm build                # Build all
 mise run lint             # Biome lint
@@ -178,11 +172,11 @@ pnpm storybook:web        # Start Storybook dev server (Web)
 # Database
 mise run local:db:generate      # Generate migrations from schema
 mise run local:db:migrate       # Run migrations
-mise run local:db:studio        # Open Drizzle Studio
+mise run local:db:studio        # Open Drizzle Studio (port 4983)
 mise run local:db:seed          # Seed RBAC data
 
 # Docker
-mise run local:docker:up        # Build and start all services
+mise run local:docker:up        # Build and start all services (apps in watch mode)
 mise run local:docker:down      # Stop all
 mise run local:docker:logs      # Tail logs
 mise run local:docker:clean     # Remove volumes and images — deletes the database
@@ -255,7 +249,19 @@ modules/{domain}/
 | `POSTGRES_PASSWORD` | Database password | `password` |
 | `POSTGRES_DB` | Database name | `fullstack_monorepo_dev` |
 
-Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell. The same goes for the host ports Compose publishes: export `API_PORT` / `WEB_PORT` in your shell to change them; inside the containers the api always listens on 8000 and the web on 3000. The dev containers run as your host user (`HOST_UID`/`HOST_GID`, exported by `mise run local:docker:up*`; plain `docker compose` falls back to 1000) so files they write into the checkout are not owned by root on Linux.
+### Host ports (Docker Compose)
+
+Compose publishes these on `127.0.0.1` only; export one in your shell (or set it in `mise.local.toml` `[env]`) to change the host side.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `HOST_MACHINE_WEB_PORT` | Web app | `3000` |
+| `HOST_MACHINE_API_PORT` | API | `8000` |
+| `HOST_MACHINE_POSTGRES_PORT` | PostgreSQL, for database clients | `5432` |
+| `HOST_MACHINE_MAILPIT_PORT` | Mailpit UI | `8025` |
+| `HOST_MACHINE_DRIZZLE_STUDIO_PORT` | Drizzle Studio | `4983` |
+
+Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell. The same goes for the host ports above; inside the containers the api always listens on 8000 and the web on 3000. The dev containers run as your host user (`HOST_UID`/`HOST_GID`, exported by `mise run local:docker:up*`; plain `docker compose` falls back to 1000) so files they write into the checkout are not owned by root on Linux.
 
 **Setup:** each app loads its own `.env` from its directory (Nest `ConfigModule`, Next.js, drizzle-kit and the seed script). Docker Compose passes `apps/<app>/.env` to each container. There is no root `.env`. Tests: `NODE_ENV=test` also loads `.env.test` in the same app directory. Web-only personal overrides can go in `apps/web/.env.local` (gitignored).
 

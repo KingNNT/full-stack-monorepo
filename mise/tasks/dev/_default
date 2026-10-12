@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Start all apps in dev mode (alias of local:dev)"
-mise run local:dev
