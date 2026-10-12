@@ -53,10 +53,13 @@ directory level is a `:` segment (`mise/tasks/local/db/migrate` →
 (`local/test/_default` → `local:test`).
 Short aliases: `mise run lint | test | typecheck`.
 
-The apps run only in Docker — there is no host `pnpm dev`. Postgres and
-Mailpit SMTP are reachable only on the compose network; `local:db:*` tasks
-run inside the `api` container. Published ports (loopback only): web 3000,
-api 8000, Mailpit UI 8025, Drizzle Studio 4983. Tests, lint, typecheck and
+The apps run only in Docker — there is no host `pnpm dev`. `local:db:*` tasks
+run inside the `api` container; Mailpit SMTP is reachable only on the compose
+network. Published ports (loopback only, override from the shell): web 3000
+(`HOST_MACHINE_WEB_PORT`), api 8000 (`HOST_MACHINE_API_PORT`), Postgres 5432
+for GUI clients (`HOST_MACHINE_POSTGRES_PORT`), Mailpit UI 8025
+(`HOST_MACHINE_MAILPIT_PORT`), Drizzle Studio 4983
+(`HOST_MACHINE_DRIZZLE_STUDIO_PORT`). Tests, lint, typecheck and
 git hooks still run on the host.
 
 ```bash
@@ -66,7 +69,7 @@ mise run local:docker:logs       # tail logs
 mise run local:db:generate       # migrations from schema changes
 mise run local:db:migrate
 mise run local:db:seed           # RBAC roles/permissions + default users (API must be up)
-mise run local:db:studio         # http://localhost:4983 → https://local.drizzle.studio
+mise run local:db:studio         # https://local.drizzle.studio (port 4983)
 ```
 
 ## Layout

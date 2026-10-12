@@ -163,9 +163,9 @@ long-running command as a failure. Later runs reuse the cached layers.
 Outgoing email is captured by Mailpit: http://localhost:8025
 
 The apps run only in these containers, in watch mode. The api container
-publishes host port 8000 and the web container port 3000 (loopback only);
-Postgres and Mailpit SMTP are not published — they are reachable only on the
-compose network. Steps 5–6 and §C depend on the containers, so leave them
+publishes host port 8000 and the web container port 3000, and Postgres is on
+5432 for database clients (all loopback only); Mailpit SMTP
+is reachable only on the compose network. Steps 5–6 and §C depend on the containers, so leave them
 running.
 
 Verify:
@@ -261,7 +261,8 @@ mise run typecheck
 | `address already in use` on 8000 or 3000 | Another process holds the port | Identify it with `lsof -i :8000` (or `:3000`). If it is something *this runbook* started — the app containers (`docker compose stop api web`) — stop that. **Otherwise ask the user before killing anything you did not start.** |
 | `local:db:*` fails with `service "api" is not running` | The containers are down | Run step 4 first |
 | `db:seed` fails with an HTTP error registering `admin@example.com` | The API in the container is not up yet | Wait for `docker compose ps` to show `api` healthy, then re-run |
-| API cannot reach the database | Wrong host in `DATABASE_URL` | Postgres is only on the compose network; the host is `postgres` (compose sets it for the api container) |
+| API cannot reach the database | Wrong host in `DATABASE_URL` | Inside the compose network the host is `postgres` (compose sets it for the api container) |
+| `address already in use` on 5432 | A host Postgres already holds the port | Start with another host port: `HOST_MACHINE_POSTGRES_PORT=5433 mise run local:docker:up` (likewise `HOST_MACHINE_API_PORT`, `HOST_MACHINE_WEB_PORT`, …) |
 | Pre-commit hook fails on gitleaks | No local binary and no Docker | `tools/bin/gitleaks` falls back to `docker run` — start Docker, or install gitleaks |
 | `Target directory already exists` from `install.sh` | `./<PROJECT_NAME>` is taken | Pick another `PROJECT_NAME`, or set `INSTALL_DIR` to a free path |
 | `install.sh` exits complaining about no terminal | Env vars missing under an agent | Set all three: `PROJECT_NAME`, `GIT_USER_NAME`, `GIT_USER_EMAIL` |

@@ -100,7 +100,8 @@ mise run local:db:seed
 
 # Both apps now run in watch mode inside the containers:
 #   Web http://localhost:3000, API http://localhost:8000
-# Postgres and Mailpit SMTP are not published to the host.
+# Postgres is on localhost:5432 for GUI clients;
+# Mailpit SMTP is not published to the host.
 
 # API health check (the path is versioned)
 curl http://localhost:8000/v1/health
@@ -248,7 +249,19 @@ modules/{domain}/
 | `POSTGRES_PASSWORD` | Database password | `password` |
 | `POSTGRES_DB` | Database name | `fullstack_monorepo_dev` |
 
-Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell. The same goes for the host ports Compose publishes: export `API_PORT` / `WEB_PORT` in your shell to change them; inside the containers the api always listens on 8000 and the web on 3000. The dev containers run as your host user (`HOST_UID`/`HOST_GID`, exported by `mise run local:docker:up*`; plain `docker compose` falls back to 1000) so files they write into the checkout are not owned by root on Linux.
+### Host ports (Docker Compose)
+
+Compose publishes these on `127.0.0.1` only; export one in your shell (or set it in `mise.local.toml` `[env]`) to change the host side.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `HOST_MACHINE_WEB_PORT` | Web app | `3000` |
+| `HOST_MACHINE_API_PORT` | API | `8000` |
+| `HOST_MACHINE_POSTGRES_PORT` | PostgreSQL, for database clients | `5432` |
+| `HOST_MACHINE_MAILPIT_PORT` | Mailpit UI | `8025` |
+| `HOST_MACHINE_DRIZZLE_STUDIO_PORT` | Drizzle Studio | `4983` |
+
+Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell. The same goes for the host ports above; inside the containers the api always listens on 8000 and the web on 3000. The dev containers run as your host user (`HOST_UID`/`HOST_GID`, exported by `mise run local:docker:up*`; plain `docker compose` falls back to 1000) so files they write into the checkout are not owned by root on Linux.
 
 **Setup:** each app loads its own `.env` from its directory (Nest `ConfigModule`, Next.js, drizzle-kit and the seed script). Docker Compose passes `apps/<app>/.env` to each container. There is no root `.env`. Tests: `NODE_ENV=test` also loads `.env.test` in the same app directory. Web-only personal overrides can go in `apps/web/.env.local` (gitignored).
 

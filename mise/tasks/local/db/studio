@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 #MISE description="Open Drizzle Studio (in the api container)"
+echo "Open https://local.drizzle.studio?port=${HOST_MACHINE_DRIZZLE_STUDIO_PORT:-4983}"
 docker compose exec api pnpm db:studio --host 0.0.0.0 --port 4983
