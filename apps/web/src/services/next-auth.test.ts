@@ -150,6 +150,36 @@ describe("authConfig callbacks", () => {
 		expect(token).toEqual(existing);
 	});
 
+	it("refreshes a still-valid access token when the client forces it", async () => {
+		const fresh = encode({ exp: 4_102_444_800 });
+		mockRefresh.mockResolvedValue({ access_token: fresh, refresh_token: "refresh-2" });
+
+		const token = await authConfig.callbacks.jwt({
+			token: {
+				accessToken: "rejected",
+				refreshToken: "refresh-1",
+				accessTokenExpires: Date.now() + 3_600_000,
+			},
+			trigger: "update",
+			session: { forceRefresh: true },
+		} as unknown as TJwtParams);
+
+		expect(mockRefresh).toHaveBeenCalledWith("refresh-1");
+		expect(token).toMatchObject({ accessToken: fresh, refreshToken: "refresh-2" });
+	});
+
+	it("does not force a refresh once the session has failed", async () => {
+		mockRefresh.mockClear();
+
+		await authConfig.callbacks.jwt({
+			token: { error: "RefreshFailed" },
+			trigger: "update",
+			session: { forceRefresh: true },
+		} as unknown as TJwtParams);
+
+		expect(mockRefresh).not.toHaveBeenCalled();
+	});
+
 	it("exposes the refresh failure on the session", () => {
 		const session = authConfig.callbacks.session({
 			session: { user: {}, expires: "" } as Session,

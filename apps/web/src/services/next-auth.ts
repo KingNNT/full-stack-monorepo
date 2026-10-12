@@ -84,7 +84,14 @@ export const authConfig = {
 			if (token.error || !token.refreshToken) {
 				return token;
 			}
-			if (token.accessTokenExpires && Date.now() < token.accessTokenExpires - REFRESH_MARGIN_MS) {
+			// The client forces a refresh when the API rejected a token we still consider valid
+			const forceRefresh =
+				trigger === "update" && (session as { forceRefresh?: boolean } | undefined)?.forceRefresh;
+			if (
+				!forceRefresh &&
+				token.accessTokenExpires &&
+				Date.now() < token.accessTokenExpires - REFRESH_MARGIN_MS
+			) {
 				return token;
 			}
 

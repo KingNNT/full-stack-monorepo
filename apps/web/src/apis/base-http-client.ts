@@ -4,7 +4,8 @@
  */
 
 import ky, { type KyInstance, type Options as KyOptions } from "ky";
-import { getSession, signOut } from "next-auth/react";
+import type { Session } from "next-auth";
+import { getCsrfToken, getSession, signOut } from "next-auth/react";
 import { apiConfig } from "@/configs/api.config";
 import type { ISuccessResponse } from "@/types/api";
 import { HttpStatusError, NetworkError, TimeoutError } from "./errors";
@@ -51,6 +52,36 @@ export interface FetchOptions {
 	 */
 	searchParams?: Record<string, string | number | boolean>;
 }
+
+const signOutExpiredSession = () => {
+	const locale = window.location.pathname.split("/")[1] || "en";
+	return signOut({ callbackUrl: `/${locale}/login?reason=session_expired` });
+};
+
+// Shared so parallel requests rejected at the same time trigger a single refresh
+let pendingSessionRefresh: Promise<Session | null> | null = null;
+
+/**
+ * Ask NextAuth to refresh the API tokens now, like useSession().update() does
+ * @returns The refreshed session, or null if the session endpoint could not be reached
+ */
+const forceSessionRefresh = (): Promise<Session | null> => {
+	pendingSessionRefresh ??= (async () => {
+		try {
+			const response = await fetch("/api/auth/session", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ csrfToken: await getCsrfToken(), data: { forceRefresh: true } }),
+			});
+			return response.ok ? ((await response.json()) as Session | null) : null;
+		} catch {
+			return null;
+		} finally {
+			pendingSessionRefresh = null;
+		}
+	})();
+	return pendingSessionRefresh;
+};
 
 /**
  * Base HTTP Client with advanced features using ky
@@ -104,8 +135,7 @@ export class BaseHttpClient {
 								response.status === 401 &&
 								(errorData as { error?: string }).error === "SESSION_REVOKED"
 							) {
-								const locale = window.location.pathname.split("/")[1] || "en";
-								await signOut({ callbackUrl: `/${locale}/login?reason=session_expired` });
+								await signOutExpiredSession();
 							}
 							throw new HttpStatusError(response.status, response.statusText, errorData);
 						}
@@ -180,6 +210,20 @@ export class BaseHttpClient {
 	}
 
 	/**
+	 * Whether the API rejected the session's access token (not a business 401 like bad credentials)
+	 */
+	private isRejectedSessionToken(error: unknown, options: FetchOptions): boolean {
+		return (
+			typeof window !== "undefined" &&
+			!options.skipAuth &&
+			!options.headers?.Authorization &&
+			error instanceof HttpStatusError &&
+			error.statusCode === 401 &&
+			(error.response as { error?: string } | undefined)?.error === "UNAUTHORIZED"
+		);
+	}
+
+	/**
 	 * Make HTTP request
 	 * @param method - HTTP method
 	 * @param url - Request URL
@@ -190,6 +234,7 @@ export class BaseHttpClient {
 		method: "get" | "post" | "put" | "patch" | "delete",
 		url: string,
 		options: FetchOptions = {},
+		isAuthRetry = false,
 	): Promise<T> {
 		try {
 			const kyOptions = this.buildKyOptions(options);
@@ -201,6 +246,18 @@ export class BaseHttpClient {
 			// Unwrap and return just the data
 			return apiResponse.data;
 		} catch (error) {
+			// The access token was rejected before it expired (clock skew, rotated secret): refresh
+			// the session and retry once. The API refused the request, so a retry cannot duplicate it.
+			if (!isAuthRetry && this.isRejectedSessionToken(error, options)) {
+				const session = await forceSessionRefresh();
+				if (session?.accessToken && !session.error) {
+					return this.request<T>(method, url, options, true);
+				}
+				if (session?.error === "RefreshFailed") {
+					await signOutExpiredSession();
+				}
+			}
+
 			// Map ky errors to custom exceptions
 			if (error instanceof Error) {
 				// Timeout error
