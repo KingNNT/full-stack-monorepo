@@ -26,7 +26,9 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
-[ -n "$type" ] && [ -n "$name" ] || die "$usage"
+if [ -z "$type" ] || [ -z "$name" ]; then
+  die "$usage"
+fi
 
 case "$type" in
   release | hotfix) die "$type branches are cut by the Start release workflow; run: mise run flow:release $type" ;;
