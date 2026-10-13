@@ -124,10 +124,14 @@ container. Key variables:
 - Web: `AUTH_SECRET`, `API_BASE_URL`, `AUTH_URL`
 
 **Infisical (optional).** When `.infisical.json` exists at the repo root,
-`mise run env:push [--env dev] [--dry-run]` pushes each app's `.env` to
+the `<env>:env:*` tasks sync env vars with the Infisical environment of the
+same name, for `<env>` in `local`, `dev`, `staging`, `prod`. The local file is
+`apps/<app>/.env` for `local` and `apps/<app>/.env.<env>` otherwise (all
+git-ignored). `mise run <env>:env:push [--dry-run]` pushes those files to
 Infisical under `/apps/<app>`; keys marked `# @shared` on their
 `.env.example` line are stored once in `/shared` and referenced from the apps
-(`${<env>.shared.KEY}`). `mise run env:check [--remote]` compares each
-`.env.example` with `.env` or Infisical. Agents follow the `env-push` and
-`env-check` skills (`.agents/skills/`). Without `.infisical.json` both tasks
-do nothing.
+(`${<env>.shared.KEY}`). `mise run <env>:env:pull [--dry-run]` writes them
+back, references resolved. `mise run <env>:env:check [--remote]` compares each
+`.env.example` with the file or Infisical. Agents follow the `env-push`,
+`env-pull` and `env-check` skills (`.agents/skills/`). Without
+`.infisical.json` these tasks do nothing.

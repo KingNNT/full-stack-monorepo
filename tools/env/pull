@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# Pulls each app's secrets from Infisical into its dotenv file:
+# tools/env/pull <env> [--app <name>] [--dry-run]
+# Run through `mise run <env>:env:pull`. Only keys in .env.example are pulled,
+# from <env>:/apps/<app> with @shared references resolved, into apps/<app>/.env
+# (local) or apps/<app>/.env.<env>. Other lines are kept; a missing file starts
+# from .env.example. Values are never printed.
+set -euo pipefail
+# shellcheck source=tools/env/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/env/lib.sh"
+
+require_infisical_config
+
+env="${1:-}"
+require_env "$env"
+shift
+usage="usage: mise run $env:env:pull [--app <name>] [--dry-run]"
+only="" dry_run=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --app)
+      [ $# -ge 2 ] || die "$usage"
+      only="$2"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    *) die "unknown argument '$1'; $usage" ;;
+  esac
+done
+require_infisical_cli
+
+apps="$(list_apps)"
+[ -n "$apps" ] || die "no apps/*/.env.example found"
+if [ -n "$only" ] && ! grep -qxF -- "$only" <<<"$apps"; then
+  die "unknown app '$only' (apps: $(join_lines "$apps"))"
+fi
+
+# shellcheck disable=SC2016 # a jq program, not shell
+diff_program='(env.WANT | fromjson) as $w | (env.HAVE | fromjson) as $h
+  | (env.KEYS | split("\n") | map(select(. != ""))) as $keys
+  | ( $keys[] as $k
+      | if ($w | has($k) | not) then "missing on remote, not pulled: \($k)"
+        elif ($h | has($k) | not) then "+ \($k)"
+        elif $h[$k] != $w[$k] then "~ \($k) (value changed)"
+        else empty end ),
+    ( [$w | keys[] | select(. as $k | $keys | index($k) | not)]
+      | select(length > 0) | "extra on remote (not pulled): \(join(", "))" )'
+# shellcheck disable=SC2016 # a jq program, not shell
+changes_program='(env.WANT | fromjson) as $w | (env.HAVE | fromjson) as $h
+  | (env.KEYS | split("\n") | map(select(. != ""))) as $keys
+  | $w | with_entries(select(.key as $k | ($keys | index($k)) and $h[$k] != .value))'
+# Sets every KEY= line of CONTENT that CHANGES names, appends the rest.
+# shellcheck disable=SC2016 # a jq program, not shell
+rewrite_program='(env.CHANGES | fromjson) as $c
+  | def quoted($k):
+      if test("^[A-Za-z0-9_./:@%+,=-]*$") then .
+      elif test("\n") then error("cannot write \($k): multi-line values are not supported")
+      elif test("\u0027") | not then "\u0027\(.)\u0027"
+      elif test("\"") | not then "\"\(.)\""
+      else error("cannot write \($k): the value has both quote types") end;
+    (if env.CONTENT == "" then [] else env.CONTENT | split("\n") end) as $lines
+  | [$lines[] | capture("^\\s*(export\\s+)?(?<k>[A-Za-z_][A-Za-z0-9_]*)=").k] as $defined
+  | [ ($lines[] | . as $line
+        | (capture("^(?<pre>\\s*(export\\s+)?)(?<k>[A-Za-z_][A-Za-z0-9_]*)=") // null) as $m
+        | if $m != null and ($c | has($m.k)) then "\($m.pre)\($m.k)=\($c[$m.k] | quoted($m.k))"
+          else $line end),
+      ($c | to_entries[] | select(.key as $k | $defined | index($k) | not)
+        | "\(.key)=\(.value | quoted(.key))") ]
+  | join("\n")'
+
+total=0
+writes=""  # "<app><TAB><changes json>" lines
+echo "Infisical env: $env"
+while IFS= read -r -u 3 app; do
+  if [ -n "$only" ] && [ "$app" != "$only" ]; then continue; fi
+  rel="$(env_file "$env" "$app")"
+  keys="$(example_keys "$app" | cut -f1)"
+  want="$(remote_object "$env" "/apps/$app" expand)"
+  have='{}'
+  if [ -f "$ENV_ROOT/$rel" ]; then
+    while IFS= read -r -u 4 key; do
+      rc=0
+      value="$(dotenv_get "$ENV_ROOT/$rel" "$key")" || rc=$?
+      if [ "$rc" = 3 ]; then continue; elif [ "$rc" != 0 ]; then exit "$rc"; fi
+      have="$(K="$key" V="$value" jq -c '.[env.K] = env.V' <<<"$have")"
+    done 4<<<"$keys"
+  fi
+  lines="$(KEYS="$keys" WANT="$want" HAVE="$have" jq -nr "$diff_program")"
+  echo "$rel"
+  if grep -q '^[+~]' <<<"$lines"; then grep '^[+~]' <<<"$lines" | sed 's/^/  /'; else echo "  no changes"; fi
+  { grep -v '^[+~]' <<<"$lines" || true; } | grep . | sed 's/^/  /' || true
+  changes="$(KEYS="$keys" WANT="$want" HAVE="$have" jq -nc "$changes_program")"
+  count="$(jq 'length' <<<"$changes")"
+  if [ "$count" -gt 0 ]; then
+    total=$((total + count))
+    writes+="$app"$'\t'"$changes"$'\n'
+  fi
+done 3< <(list_apps)
+echo "$total to write"
+
+if [ "$dry_run" = 1 ]; then
+  echo "dry run: nothing written"
+  exit 0
+fi
+[ "$total" -gt 0 ] || exit 0
+
+tmp=""
+trap 'rm -f "$tmp"' EXIT
+while IFS=$'\t' read -r -u 3 app changes; do
+  rel="$(env_file "$env" "$app")"
+  source_file="$ENV_ROOT/$rel"
+  [ -f "$source_file" ] || source_file="$ENV_ROOT/apps/$app/.env.example"
+  tmp="$(umask 077 && mktemp "$ENV_ROOT/apps/$app/.env.pull.XXXXXX")"
+  CONTENT="$(cat "$source_file")" CHANGES="$changes" jq -nr "$rewrite_program" >"$tmp"
+  mv "$tmp" "$ENV_ROOT/$rel"
+  tmp=""
+done 3<<<"${writes%$'\n'}"
+echo "Pulled $total secret(s) from $env"

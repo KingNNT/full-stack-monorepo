@@ -49,6 +49,10 @@ Thumbs.db
 .env.local
 .env.test
 .env.production
+.env.dev
+.env.staging
+.env.prod
+.env.pull.*
 .envrc.local
 
 # mise local

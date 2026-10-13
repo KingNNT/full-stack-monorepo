@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-#MISE description="Compare each app's .env.example keys with .env (default) or Infisical (--remote): env:check [--remote] [--env <slug>] [--app <name>]"
-# Reports missing/extra keys and, remotely, @shared keys that are not
-# references to /shared. Exits 1 on any problem. Never prints values.
+# Compares each app's .env.example keys with its dotenv file (default) or
+# Infisical (--remote): tools/env/check <env> [--remote] [--app <name>]
+# Run through `mise run <env>:env:check`. Reports missing/extra keys and,
+# remotely, @shared keys that are not references to /shared. Exits 1 on any
+# problem. Never prints values.
 set -euo pipefail
 # shellcheck source=tools/env/lib.sh
 source "$(git rev-parse --show-toplevel)/tools/env/lib.sh"
 
 require_infisical_config
 
-usage="usage: mise run env:check [--remote] [--env <slug>] [--app <name>]"
-remote=0 env=dev only=""
+env="${1:-}"
+require_env "$env"
+shift
+usage="usage: mise run $env:env:check [--remote] [--app <name>]"
+remote=0 only=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --remote)
       remote=1
       shift
-      ;;
-    --env)
-      [ $# -ge 2 ] || die "$usage"
-      env="$2"
-      shift 2
       ;;
     --app)
       [ $# -ge 2 ] || die "$usage"
@@ -53,14 +53,15 @@ fi
 
 while IFS= read -r -u 3 app; do
   if [ -n "$only" ] && [ "$app" != "$only" ]; then continue; fi
-  echo "apps/$app"
+  rel="$(env_file "$env" "$app")"
+  if [ "$remote" = 1 ]; then echo "$env:/apps/$app"; else echo "$rel"; fi
   clean=1
   want="$(example_keys "$app" | cut -f1 | sorted)"
   if [ "$remote" = 1 ]; then
     have_obj="$(remote_object "$env" "/apps/$app")"
     have="$(jq -r 'keys[]' <<<"$have_obj" | sorted)"
-  elif [ -f "$ENV_ROOT/apps/$app/.env" ]; then
-    have="$(dotenv_keys "$ENV_ROOT/apps/$app/.env" | sorted)"
+  elif [ -f "$ENV_ROOT/$rel" ]; then
+    have="$(dotenv_keys "$ENV_ROOT/$rel" | sorted)"
   else
     have=""
   fi

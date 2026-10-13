@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Compare each app's .env.example keys with apps/<app>/.env.staging (default) or Infisical env 'staging' (--remote): [--remote] [--app <name>]"
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/tools/env/check" staging "$@"

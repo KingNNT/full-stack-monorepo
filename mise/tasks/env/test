@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Shellcheck and test the env:* tasks: env:test [name-filter]"
-set -euo pipefail
-shellcheck -x tools/env/lib.sh tools/env/test/run.sh tools/env/test/infisical mise/tasks/env/*
-tools/env/test/run.sh "$@"

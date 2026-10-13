@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Shared helpers for the env:* mise tasks. Source, do not execute.
+# Shared helpers for the <env>:env:* mise tasks. Source, do not execute.
 # Values read from .env files and Infisical are never printed or passed as
 # arguments; jq receives them through environment variables.
 
 ENV_ROOT="$(git rev-parse --show-toplevel)"
 KEY_RE='^([A-Za-z_][A-Za-z0-9_]*)=(.*)$'
+# Task environments; each is also the Infisical environment slug.
+ENVS="local dev staging prod"
 SHARED_RE='#.*@shared'
 
 die() {
@@ -23,6 +25,23 @@ require_infisical_config() {
 require_infisical_cli() {
   command -v infisical >/dev/null 2>&1 \
     || die "infisical CLI not found; install it: https://infisical.com/docs/cli/overview"
+}
+
+require_env() { # <env>
+  case " $ENVS " in
+    *" ${1:-} "*) ;;
+    *) die "unknown environment '${1:-}' (environments: ${ENVS// /, })" ;;
+  esac
+}
+
+# The dotenv file of <app> in <env>, relative to ENV_ROOT: apps/<app>/.env
+# for local, apps/<app>/.env.<env> otherwise.
+env_file() { # <env> <app>
+  if [ "$1" = local ]; then
+    echo "apps/$2/.env"
+  else
+    echo "apps/$2/.env.$1"
+  fi
 }
 
 # App names (apps/<name>/ with a .env.example), one per line.
@@ -147,7 +166,7 @@ infisical_run() {
   if ! out="$(infisical "$@" 2>"$err")"; then
     cat "$err" >&2
     rm -f "$err"
-    die "infisical $1 $2 failed; check --env and run: infisical login (or set INFISICAL_TOKEN)"
+    die "infisical $1 $2 failed; check that the Infisical environment exists and run: infisical login (or set INFISICAL_TOKEN)"
   fi
   rm -f "$err"
   printf '%s\n' "$out"
@@ -182,14 +201,15 @@ folder_exists() { walk_folders "$1" "$2"; }
 
 ensure_folder() { walk_folders "$1" "$2" create; }
 
-# Raw secrets of <env>:<path> as {"KEY": "value"} with references unexpanded;
-# {} when the folder does not exist.
-remote_object() { # <env> <path>
-  local out
+# Secrets of <env>:<path> as {"KEY": "value"}, with references unexpanded
+# unless `expand` is given; {} when the folder does not exist.
+remote_object() { # <env> <path> [expand]
+  local out expand=false
+  if [ "${3:-}" = expand ]; then expand=true; fi
   if ! folder_exists "$1" "$2"; then
     echo '{}'
     return 0
   fi
-  out="$(infisical_run export --format=json --env "$1" --path "$2" --expand=false --include-imports=false --secret-overriding=false --silent)" || exit 1
+  out="$(infisical_run export --format=json --env "$1" --path "$2" --expand="$expand" --include-imports=false --secret-overriding=false --silent)" || exit 1
   jq -c 'map({key: (.key // .secretKey), value: (.value // .secretValue)}) | from_entries' <<<"$out"
 }
