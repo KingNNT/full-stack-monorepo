@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Test double for gh: appends its argv to $GH_LOG and answers from $GH_RULES.
+# Rule line: <glob over argv>|<exit code>|<once or empty>|<json body>
+# The first matching rule wins; a `once` rule is removed after it matches.
+# With --jq, the body is filtered through jq -r like gh does.
+set -euo pipefail
+printf '%s\n' "$*" >>"$GH_LOG"
+
+args=("$@")
+jq_expr=""
+for i in "${!args[@]}"; do
+  if [ "${args[$i]}" = --jq ]; then
+    jq_expr="${args[$((i + 1))]}"
+  fi
+done
+
+n=0
+# shellcheck disable=SC2094 # a matched rule deletes its own line, then we exit
+while IFS= read -r line; do
+  n=$((n + 1))
+  pattern="${line%%|*}"
+  rest="${line#*|}"
+  code="${rest%%|*}"
+  rest="${rest#*|}"
+  once="${rest%%|*}"
+  body="${rest#*|}"
+  # shellcheck disable=SC2053 # the rule is a glob on purpose
+  [[ "$*" == $pattern ]] || continue
+  if [ "$once" = once ]; then
+    sed -i.bak "${n}d" "$GH_RULES"
+    rm -f "$GH_RULES.bak"
+  fi
+  if [ -n "$body" ]; then
+    if [ -n "$jq_expr" ]; then
+      printf '%s' "$body" | jq -r "$jq_expr"
+    else
+      printf '%s\n' "$body"
+    fi
+  fi
+  exit "$code"
+done <"$GH_RULES"

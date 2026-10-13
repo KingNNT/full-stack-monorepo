@@ -367,23 +367,27 @@ what passed staging.
 
 ### Releasing
 
-1. **Actions → Start release → Run workflow**, kind `release`. The version
+1. **Actions → Start release → Run workflow**, kind `release` (or `mise run flow:release`). The version
    comes from the Conventional Commits on `develop` since the last tag
    (`feat` → minor, `fix`/other → patch, `!` or `BREAKING CHANGE:` → major);
    override with `bump` or an exact `version`. It cuts `release/X.Y.Z`, bumps
    every `package.json`, pushes (→ staging) and opens the PR into `main`.
 2. Verify on staging. Fixes go in as `bugfix/*` PRs into `release/X.Y.Z`;
    each push redeploys staging.
-3. Merge the PR with **Create a merge commit**. `release-finish.yml` tags
+3. Merge the PR with **Create a merge commit** (or `mise run flow:finish`). `release-finish.yml` tags
    `vX.Y.Z` (→ prod, after the CodePipeline approval), publishes the GitHub
    Release with generated notes, and opens `chore/back-merge-vX.Y.Z` PRs into
    `develop` and any open `release/*`.
-4. Merge the back-merge PRs with **Create a merge commit** — a squash leaves
+4. Merge the back-merge PRs with **Create a merge commit** (or `mise run flow:back-merge`) — a squash leaves
    `develop` without `main`'s history, and the next release PR fails its check.
 
-A hotfix is the same with kind `hotfix`: it branches from `main` and bumps the
+A hotfix is the same with kind `hotfix` (`mise run flow:release hotfix`): it branches from `main` and bumps the
 patch version. Only one `release/*` and one `hotfix/*` may be open at a time;
 both deploy to the same staging, so the last push wins.
+
+`mise run flow:status` shows what is open, PR checks, recent runs and the next
+version. Every `flow:*` task that pushes, merges or starts a workflow takes
+`--dry-run`; agents follow `.agents/skills/git-flow/SKILL.md`.
 
 ### Setting up a project's GitHub repo
 

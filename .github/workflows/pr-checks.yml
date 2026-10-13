@@ -35,6 +35,11 @@ jobs:
         if: github.base_ref == 'main'
         run: tools/release/check-release.sh origin/main
 
+      - name: Flow tasks
+        run: |
+          shellcheck -x tools/flow/lib.sh tools/flow/test/run.sh tools/flow/test/gh tools/flow/test/commitlint mise/tasks/flow/*
+          tools/flow/test/run.sh
+
       - uses: pnpm/action-setup@v4
         with:
           version: 11

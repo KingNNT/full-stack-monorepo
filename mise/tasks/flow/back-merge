@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#MISE description="Merge green back-merge PRs with a merge commit (never squash): flow:back-merge [--dry-run]"
+# A squashed back-merge leaves develop without main's history and the next
+# release PR fails its check. Conflicts are left to a person.
+set -euo pipefail
+# shellcheck source=tools/flow/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/flow/lib.sh"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)
+      FLOW_DRY_RUN=1
+      shift
+      ;;
+    *) die "unknown argument '$1'; usage: mise run flow:back-merge [--dry-run]" ;;
+  esac
+done
+
+require_gh
+prs="$(gh pr list --state open --limit 100 \
+  --json number,headRefName,baseRefName,mergeable,reviewDecision,autoMergeRequest,statusCheckRollup,url \
+  --jq "$JQ_DEFS"' .[] | select(.headRefName | startswith("chore/back-merge-v"))
+    | [.number, .headRefName, .baseRefName, checks, review, .mergeable,
+       (if .autoMergeRequest then (.autoMergeRequest.mergeMethod // "MERGE") else "manual" end), .url] | @tsv')"
+[ -n "$prs" ] || { echo "No open back-merge PRs"; exit 0; }
+
+failed=0
+while IFS=$'\t' read -r -u 3 number head base checks review mergeable auto_merge url; do
+  if [ "$mergeable" = CONFLICTING ]; then
+    cat <<EOF
+#$number $head → $base has conflicts; resolve them on $head, never on $base:
+  git fetch origin && git switch $head && git merge origin/$base
+  # fix the conflicts, then: git commit && git push
+  then re-run: mise run flow:back-merge
+EOF
+  elif [ "$mergeable" != MERGEABLE ]; then
+    echo "#$number → $base: mergeability $mergeable; skipped, re-run shortly ($url)"
+  elif [ "$checks" != pass ]; then
+    echo "#$number → $base: checks $checks; skipped ($url)"
+  elif [ "$review" != APPROVED ] && [ "$review" != NONE ]; then
+    echo "#$number → $base: needs an approving review; skipped ($url)"
+  elif [ "$auto_merge" = MERGE ]; then
+    echo "#$number → $base: auto-merge is on; GitHub merges it ($url)"
+  elif [ "$auto_merge" != manual ]; then
+    echo "#$number → $base: auto-merge uses $auto_merge — disable it and merge with a merge commit; skipped ($url)"
+  else
+    if run gh pr merge "$number" --merge </dev/null; then
+      [ "$FLOW_DRY_RUN" = 1 ] || echo "#$number → $base: merged"
+    else
+      echo "#$number → $base: merge failed ($url)" >&2
+      failed=1
+    fi
+  fi
+done 3<<<"$prs"
+[ "$failed" = 0 ] || die "some back-merge PRs failed to merge; see above"

@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+#MISE description="Merge the open release/hotfix PR into main and follow it to the tag: flow:finish [release|hotfix] [--dry-run]"
+# main only takes merge commits. release-finish.yml then tags vX.Y.Z (→ prod
+# after the CodePipeline approval), publishes the Release and opens back-merges.
+set -euo pipefail
+# shellcheck source=tools/flow/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/flow/lib.sh"
+
+usage="usage: mise run flow:finish [release|hotfix] [--dry-run]"
+kind=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    release | hotfix)
+      kind="$1"
+      shift
+      ;;
+    --dry-run)
+      FLOW_DRY_RUN=1
+      shift
+      ;;
+    *) die "unknown argument '$1'; $usage" ;;
+  esac
+done
+
+require_gh
+fetch_origin
+require_main
+
+heads="${kind:-release|hotfix}"
+prs="$(gh pr list --base main --state open \
+  --json number,headRefName,headRefOid,reviewDecision,mergeable,statusCheckRollup,url \
+  --jq "$JQ_DEFS"' .[] | select(.headRefName | test("^('"$heads"')/"))
+    | [.number, .headRefName, .headRefOid, checks, review, .mergeable, .url] | @tsv')"
+[ -n "$prs" ] || die "no open ${kind:-release/hotfix} PR into main; start one with: mise run flow:release"
+if [ "$(grep -c . <<<"$prs")" -gt 1 ]; then
+  kinds="$(cut -f2 <<<"$prs" | sed 's|/.*||' | sort -u)"
+  if [ -n "$kind" ] || [ "$(grep -c . <<<"$kinds")" -eq 1 ]; then
+    die "more than one open ${kind:-$kinds} PR into main: $(awk -F'\t' '{printf "%s#%s %s", (NR > 1 ? ", " : ""), $1, $2}' <<<"$prs"); close all but one"
+  fi
+  die "a release and a hotfix PR are both open; pass which: mise run flow:finish release|hotfix"
+fi
+IFS=$'\t' read -r number head sha checks review mergeable url <<<"$prs"
+
+[ "$checks" = pass ] || die "checks on #$number are $checks; wait for them or fix the branch: $url"
+case "$review" in
+  APPROVED | NONE) ;;
+  *) die "#$number needs an approving review (review: $review): $url" ;;
+esac
+case "$mergeable" in
+  MERGEABLE) ;;
+  UNKNOWN) die "GitHub is still computing mergeability for #$number; re-run shortly" ;;
+  CONFLICTING) die "#$number is not mergeable (CONFLICTING); bring origin/main into $head through a bugfix PR: $url" ;;
+  *) die "#$number is not mergeable ($mergeable): $url" ;;
+esac
+[ "$(git rev-parse "origin/$head")" = "$sha" ] || die "origin/$head moved since the PR was read; re-run"
+
+tmp="$(mktemp -d)"
+trap 'git worktree remove --force "$tmp/wt" >/dev/null 2>&1 || true; rm -rf "$tmp"; git worktree prune' EXIT
+git worktree add -q --detach "$tmp/wt" "$sha"
+(cd "$tmp/wt" && tools/release/check-release.sh origin/main)
+
+pkg_version="$(read_version "$tmp/wt/package.json")"
+[ "$pkg_version" = "${head#*/}" ] \
+  || die "$head carries version $pkg_version in package.json; the branch and the version must match"
+
+run gh pr merge "$number" --merge --match-head-commit "$sha"
+run git push origin --delete "$head"
+[ "$FLOW_DRY_RUN" = 1 ] && exit 0
+
+version="${head#*/}"
+merge_sha="$(gh pr view "$number" --json mergeCommit --jq .mergeCommit.oid)"
+finish_run() {
+  gh run list --workflow release-finish.yml --commit "$merge_sha" --limit 1 \
+    --json databaseId --jq '.[0].databaseId // empty'
+}
+echo "Merged #$number; waiting for release-finish.yml"
+run_id="$(poll_for finish_run)" \
+  || die "release-finish.yml did not start for $merge_sha; check: gh run list --workflow release-finish.yml"
+gh run watch "$run_id" --exit-status
+release_url="$(gh release view "v$version" --json url --jq .url)"
+[ -n "$release_url" ] || die "release-finish.yml finished but no GitHub Release v$version exists; check the run log: gh run view $run_id --log"
+echo "Released v$version: $release_url"
+echo "Back-merge PRs:"
+gh pr list --state open --head "chore/back-merge-v$version" --json url --jq '.[].url'
+echo "Prod deploys from the tag after the CodePipeline approval. Next: mise run flow:back-merge"
