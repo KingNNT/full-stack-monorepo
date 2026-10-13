@@ -10,3 +10,5 @@
   symlink paths.
 - `.claude/skills/git-flow` is a symlink to `.agents/skills/git-flow`, shared
   with other harnesses; edit the skill there.
+- `.claude/skills/env-push` and `.claude/skills/env-check` are symlinks to
+  `.agents/skills/`, shared with other harnesses; edit the skills there.

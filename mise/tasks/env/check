@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+#MISE description="Compare each app's .env.example keys with .env (default) or Infisical (--remote): env:check [--remote] [--env <slug>] [--app <name>]"
+# Reports missing/extra keys and, remotely, @shared keys that are not
+# references to /shared. Exits 1 on any problem. Never prints values.
+set -euo pipefail
+# shellcheck source=tools/env/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/env/lib.sh"
+
+require_infisical_config
+
+usage="usage: mise run env:check [--remote] [--env <slug>] [--app <name>]"
+remote=0 env=dev only=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --remote)
+      remote=1
+      shift
+      ;;
+    --env)
+      [ $# -ge 2 ] || die "$usage"
+      env="$2"
+      shift 2
+      ;;
+    --app)
+      [ $# -ge 2 ] || die "$usage"
+      only="$2"
+      shift 2
+      ;;
+    *) die "unknown argument '$1'; $usage" ;;
+  esac
+done
+if [ "$remote" = 1 ]; then require_infisical_cli; fi
+
+apps="$(list_apps)"
+[ -n "$apps" ] || die "no apps/*/.env.example found"
+if [ -n "$only" ] && ! grep -qxF -- "$only" <<<"$apps"; then
+  die "unknown app '$only' (apps: $(join_lines "$apps"))"
+fi
+
+problems=0
+clean=1
+
+report() { # <label> <keys, one per line>
+  [ -n "$2" ] || return 0
+  echo "  $1: $(join_lines "$2")"
+  problems=$((problems + $(grep -c . <<<"$2")))
+  clean=0
+}
+
+if [ "$remote" = 1 ]; then
+  shared_have="$(remote_object "$env" /shared)"
+fi
+
+while IFS= read -r -u 3 app; do
+  if [ -n "$only" ] && [ "$app" != "$only" ]; then continue; fi
+  echo "apps/$app"
+  clean=1
+  want="$(example_keys "$app" | cut -f1 | sorted)"
+  if [ "$remote" = 1 ]; then
+    have_obj="$(remote_object "$env" "/apps/$app")"
+    have="$(jq -r 'keys[]' <<<"$have_obj" | sorted)"
+  elif [ -f "$ENV_ROOT/apps/$app/.env" ]; then
+    have="$(dotenv_keys "$ENV_ROOT/apps/$app/.env" | sorted)"
+  else
+    have=""
+  fi
+  report missing "$(minus "$want" "$have")"
+  report extra "$(minus "$have" "$want")"
+  if [ "$remote" = 1 ]; then
+    bad_ref="" shared_missing=""
+    for key in $(example_keys "$app" | awk -F'\t' '$2 == "shared" { print $1 }'); do
+      if K="$key" jq -e 'has(env.K)' <<<"$have_obj" >/dev/null \
+        && ! K="$key" R="$(shared_ref "$env" "$key")" jq -e '.[env.K] == env.R' <<<"$have_obj" >/dev/null; then
+        bad_ref+="$key"$'\n'
+      fi
+      if ! K="$key" jq -e 'has(env.K)' <<<"$shared_have" >/dev/null; then
+        shared_missing+="$key"$'\n'
+      fi
+    done
+    report "not a shared ref" "$bad_ref"
+    report "shared missing" "$shared_missing"
+  fi
+  if [ "$clean" = 1 ]; then echo "  ok"; fi
+done 3< <(list_apps)
+
+markers="$(shared_marker_problems)"
+if [ -n "$markers" ]; then
+  echo "shared markers"
+  # shellcheck disable=SC2001 # indenting every line of a multi-line string
+  sed 's/^/  /' <<<"$markers"
+  problems=$((problems + $(grep -c . <<<"$markers")))
+fi
+
+if [ "$problems" = 0 ]; then
+  echo "✔ env matches .env.example"
+  exit 0
+fi
+echo "✖ $problems problems"
+exit 1

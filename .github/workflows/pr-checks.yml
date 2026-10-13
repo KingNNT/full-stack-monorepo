@@ -40,6 +40,11 @@ jobs:
           shellcheck -x tools/flow/lib.sh tools/flow/test/run.sh tools/flow/test/gh tools/flow/test/commitlint mise/tasks/flow/*
           tools/flow/test/run.sh
 
+      - name: Env tasks
+        run: |
+          shellcheck -x tools/env/lib.sh tools/env/test/run.sh tools/env/test/infisical mise/tasks/env/*
+          tools/env/test/run.sh
+
       - uses: pnpm/action-setup@v4
         with:
           version: 11
