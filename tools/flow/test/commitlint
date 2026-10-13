@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Test double for commitlint: accepts a Conventional Commits header on stdin.
+read -r title
+[[ "$title" =~ ^[a-z]+(\([a-z0-9._-]+\))?!?:\ .+ ]]

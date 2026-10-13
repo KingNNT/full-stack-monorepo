@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#MISE description="Push the current branch and open its PR into the right base: flow:pr [--title <t>] [--body-file <f>] [--draft] [--dry-run]"
+# The base is the one flow:start recorded (develop otherwise). Branch, target
+# and title are checked locally with the same rules as the PR checks.
+set -euo pipefail
+# shellcheck source=tools/flow/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/flow/lib.sh"
+
+usage="usage: mise run flow:pr [--title <t>] [--body-file <f>] [--draft] [--dry-run]"
+title="" body_file=""
+draft=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --title)
+      [ $# -ge 2 ] || die "$usage"
+      title="$2"
+      shift 2
+      ;;
+    --body-file)
+      [ $# -ge 2 ] || die "$usage"
+      body_file="$2"
+      shift 2
+      ;;
+    --draft)
+      draft=(--draft)
+      shift
+      ;;
+    --dry-run)
+      FLOW_DRY_RUN=1
+      shift
+      ;;
+    *) die "unknown argument '$1'; $usage" ;;
+  esac
+done
+
+branch="$(git branch --show-current)"
+[ -n "$branch" ] || die "detached HEAD; switch to your branch first"
+case "$branch" in
+  main | develop | release/* | hotfix/*)
+    die "'$branch' is not a working branch; start one with: mise run flow:start <type> <name>"
+    ;;
+esac
+[ -z "$body_file" ] || [ -f "$body_file" ] || die "--body-file '$body_file' does not exist"
+
+require_gh
+fetch_origin
+base="$(git config "branch.$branch.flowBase" || echo develop)"
+git rev-parse -q --verify "origin/$base" >/dev/null || die "base '$base' is not on origin; was it merged or deleted?"
+"$RELEASE_DIR/check-branch.sh" "$branch" "$base" >/dev/null
+
+ahead="$(git rev-list --count "origin/$base..HEAD")"
+[ "$ahead" -gt 0 ] || die "no commits ahead of origin/$base; commit your work first"
+if [ -z "$title" ]; then
+  [ "$ahead" -eq 1 ] \
+    || die "$ahead commits ahead of origin/$base; pass --title '<type>(<scope>): <summary>' (it becomes the squash commit)"
+  title="$(git log -1 --format=%s)"
+fi
+commitlint_title "$title"
+
+run git push -u origin "$branch"
+if url="$(gh pr list --head "$branch" --state open --json url --jq '.[0].url // empty')" && [ -n "$url" ]; then
+  echo "PR already open: $url"
+  exit 0
+fi
+if [ -n "$body_file" ]; then
+  body=(--body-file "$body_file")
+else
+  body=(--body "$(git log --reverse --format='- %s' "origin/$base..HEAD")")
+fi
+run gh pr create --base "$base" --head "$branch" --title "$title" "${body[@]}" ${draft[@]+"${draft[@]}"}
