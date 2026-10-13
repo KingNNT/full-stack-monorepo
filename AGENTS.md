@@ -108,3 +108,12 @@ container. Key variables:
 
 - API: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `API_PORT`
 - Web: `AUTH_SECRET`, `API_BASE_URL`, `AUTH_URL`
+
+**Infisical (optional).** When `.infisical.json` exists at the repo root,
+`mise run env:push [--env dev] [--dry-run]` pushes each app's `.env` to
+Infisical under `/apps/<app>`; keys marked `# @shared` on their
+`.env.example` line are stored once in `/shared` and referenced from the apps
+(`${<env>.shared.KEY}`). `mise run env:check [--remote]` compares each
+`.env.example` with `.env` or Infisical. Agents follow the `env-push` and
+`env-check` skills (`.agents/skills/`). Without `.infisical.json` both tasks
+do nothing.
