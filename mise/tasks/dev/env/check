@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Compare each app's .env.example keys with apps/<app>/.env.dev (default) or Infisical env 'dev' (--remote): [--remote] [--app <name>]"
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/tools/env/check" dev "$@"

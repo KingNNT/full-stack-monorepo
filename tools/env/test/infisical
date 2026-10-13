@@ -13,7 +13,7 @@ if [ "${FAKE_INFISICAL_FAIL:-0}" = 1 ]; then
   exit 1
 fi
 
-cmd="" env=dev path=/ name="" file=""
+cmd="" env=dev path=/ name="" file="" expand=true
 while [ $# -gt 0 ]; do
   case "$1" in
     --env | --path | --name | --file | --format | -o)
@@ -39,6 +39,7 @@ while [ $# -gt 0 ]; do
     --path) path="$val" ;;
     --name) name="$val" ;;
     --file) file="$val" ;;
+    --expand) expand="$val" ;;
   esac
 done
 
@@ -72,7 +73,12 @@ case "$cmd" in
     ;;
   " export")
     require_folder
-    state --arg e "$env" --arg p "$path" '(.secrets[$e][$p] // {}) | to_entries | map({key, value})'
+    # With --expand, resolves ${<env>.shared.<KEY>} references (the only kind the tasks write).
+    state --arg e "$env" --arg p "$path" --arg x "$expand" '. as $root
+      | (.secrets[$e][$p] // {}) | to_entries | map({key, value})
+      | if $x == "true" then
+          map(.value |= gsub("\\$\\{(?<e>[^.}]+)\\.shared\\.(?<k>[^}]+)\\}"; $root.secrets[.e]["/shared"][.k] // ""))
+        else . end'
     ;;
   " secrets set")
     require_folder

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2016 # tests compare literal Infisical references like '${dev.shared.KEY}'
-# Tests for the env:* mise tasks: tools/env/test/run.sh [name-filter]
+# shellcheck disable=SC2016 # tests compare literal Infisical references like '${local.shared.KEY}'
+# Tests for the <env>:env:* mise tasks: tools/env/test/run.sh [name-filter]
 # Each case runs in a throwaway git repo with apps api and web and the fake
 # infisical in this directory. No network, no Infisical.
 set -uo pipefail
@@ -25,7 +25,10 @@ setup() {
   cd "$SANDBOX/repo"
   mkdir -p apps/api apps/web tools mise/tasks
   cp -R "$ROOT/tools/env" tools/
-  cp -R "$ROOT/mise/tasks/env" mise/tasks/
+  for e in local dev staging prod; do
+    mkdir -p "mise/tasks/$e"
+    cp -R "$ROOT/mise/tasks/$e/env" "mise/tasks/$e/"
+  done
   echo '{"workspaceId": "test"}' >.infisical.json
   cat >apps/api/.env.example <<'EOF'
 # Database
@@ -170,6 +173,12 @@ test_lib_marker_problems() {
   expect_eq "$(shared_marker_problems)" "JWT_ACCESS_SECRET is @shared in apps/api but not in apps/web"
 }
 
+test_lib_env_file() {
+  source tools/env/lib.sh
+  expect_eq "$(env_file local api)" "apps/api/.env"
+  expect_eq "$(env_file prod web)" "apps/web/.env.prod"
+}
+
 test_runner_fails_when_no_test_matches() {
   expect_fail "no tests match" "$TESTS/run.sh" zzz_no_such_test
 }
@@ -203,45 +212,59 @@ main() {
   [ "$failed" -eq 0 ]
 }
 
-# --- env:push ---
+# --- push ---
 
 test_push_skips_without_infisical_json() {
   rm .infisical.json
   local out
-  out="$(mise/tasks/env/push)"
+  out="$(mise/tasks/local/env/push)"
   expect_contains "$out" "Infisical is not configured (no .infisical.json); skipping"
   expect_eq "$(wc -c <"$INFISICAL_LOG" | tr -d ' ')" 0
 }
 
 test_push_first_run_creates_layout() {
   local out shared_line api_line
-  out="$(mise/tasks/env/push)"
+  out="$(mise/tasks/local/env/push)"
   expect_contains "$out" "+ DATABASE_URL (shared ref)"
   expect_contains "$out" "7 to write, 0 deleted"
-  expect_contains "$out" "Pushed 7 secret(s) to dev"
-  expect_eq "$(remote_value dev /shared DATABASE_URL)" "postgres://db-secret-1/app"
-  expect_eq "$(remote_value dev /shared JWT_ACCESS_SECRET)" "jwt-secret-1"
-  expect_eq "$(remote_value dev /apps/api DATABASE_URL)" '${dev.shared.DATABASE_URL}'
-  expect_eq "$(remote_value dev /apps/api JWT_ACCESS_SECRET)" '${dev.shared.JWT_ACCESS_SECRET}'
-  expect_eq "$(remote_value dev /apps/api API_PORT)" "8001"
-  expect_eq "$(remote_value dev /apps/web JWT_ACCESS_SECRET)" '${dev.shared.JWT_ACCESS_SECRET}'
-  expect_eq "$(remote_value dev /apps/web AUTH_SECRET)" "auth-secret-1"
+  expect_contains "$out" "Pushed 7 secret(s) to local"
+  expect_eq "$(remote_value local /shared DATABASE_URL)" "postgres://db-secret-1/app"
+  expect_eq "$(remote_value local /shared JWT_ACCESS_SECRET)" "jwt-secret-1"
+  expect_eq "$(remote_value local /apps/api DATABASE_URL)" '${local.shared.DATABASE_URL}'
+  expect_eq "$(remote_value local /apps/api JWT_ACCESS_SECRET)" '${local.shared.JWT_ACCESS_SECRET}'
+  expect_eq "$(remote_value local /apps/api API_PORT)" "8001"
+  expect_eq "$(remote_value local /apps/web JWT_ACCESS_SECRET)" '${local.shared.JWT_ACCESS_SECRET}'
+  expect_eq "$(remote_value local /apps/web AUTH_SECRET)" "auth-secret-1"
   shared_line="$(grep -n 'secrets set .*--path /shared' "$INFISICAL_LOG" | cut -d: -f1)"
   api_line="$(grep -n 'secrets set .*--path /apps/api' "$INFISICAL_LOG" | cut -d: -f1)"
   [ "$shared_line" -lt "$api_line" ] || { echo "/shared must be written before /apps/api"; cat "$INFISICAL_LOG"; return 1; }
 }
 
-test_push_uses_the_env_slug() {
-  mise/tasks/env/push --env staging >/dev/null
+test_push_staging_uses_its_file_and_slug() {
+  cp apps/api/.env apps/api/.env.staging
+  sed -i.bak 's/^API_PORT=.*/API_PORT=7000/' apps/api/.env.staging
+  rm apps/api/.env.staging.bak
+  cp apps/web/.env apps/web/.env.staging
+  mise/tasks/staging/env/push >/dev/null
   expect_eq "$(remote_value staging /apps/api DATABASE_URL)" '${staging.shared.DATABASE_URL}'
-  expect_eq "$(remote_value dev /apps/api DATABASE_URL)" "<unset>"
+  expect_eq "$(remote_value staging /apps/api API_PORT)" "7000"
+  expect_eq "$(remote_value local /apps/api DATABASE_URL)" "<unset>"
+}
+
+test_push_staging_requires_its_file() {
+  expect_fail "apps/api/.env.staging not found; create it from apps/api/.env.example (or: mise run staging:env:pull)" mise/tasks/staging/env/push
+  expect_no_call "secrets set"
+}
+
+test_push_rejects_unknown_environment() {
+  expect_fail "unknown environment 'qa' (environments: local, dev, staging, prod)" tools/env/push qa
 }
 
 test_push_second_run_is_a_noop() {
-  mise/tasks/env/push >/dev/null
+  mise/tasks/local/env/push >/dev/null
   : >"$INFISICAL_LOG"
   local out
-  out="$(mise/tasks/env/push)"
+  out="$(mise/tasks/local/env/push)"
   expect_contains "$out" "0 to write, 0 deleted"
   expect_contains "$out" "no changes"
   expect_no_call "secrets set"
@@ -249,37 +272,37 @@ test_push_second_run_is_a_noop() {
 }
 
 test_push_updates_changed_values_and_keeps_remote_only_keys() {
-  mise/tasks/env/push >/dev/null
+  mise/tasks/local/env/push >/dev/null
   sed -i.bak 's/^API_PORT=.*/API_PORT=9000/' apps/api/.env
   rm apps/api/.env.bak
-  state_set dev /apps/api LEGACY_FLAG on
+  state_set local /apps/api LEGACY_FLAG on
   local out
-  out="$(mise/tasks/env/push)"
+  out="$(mise/tasks/local/env/push)"
   expect_contains "$out" "~ API_PORT (value changed)"
   expect_contains "$out" "! LEGACY_FLAG (only on remote, kept)"
   expect_contains "$out" "1 to write, 0 deleted"
-  expect_eq "$(remote_value dev /apps/api API_PORT)" "9000"
-  expect_eq "$(remote_value dev /apps/api LEGACY_FLAG)" "on"
+  expect_eq "$(remote_value local /apps/api API_PORT)" "9000"
+  expect_eq "$(remote_value local /apps/api LEGACY_FLAG)" "on"
 }
 
 test_push_rejects_shared_value_conflict() {
   printf 'JWT_ACCESS_SECRET=other-jwt\nAUTH_SECRET=auth-secret-1\n' >apps/web/.env
-  expect_fail "@shared JWT_ACCESS_SECRET differs between apps/api/.env and apps/web/.env" mise/tasks/env/push
+  expect_fail "@shared JWT_ACCESS_SECRET differs between apps/api/.env and apps/web/.env" mise/tasks/local/env/push
   expect_no_call "secrets set"
   expect_no_call "folders create"
 }
 
 test_push_rejects_inconsistent_markers() {
   printf 'JWT_ACCESS_SECRET=\nAUTH_SECRET=\n' >apps/web/.env.example
-  expect_fail "JWT_ACCESS_SECRET is @shared in apps/api but not in apps/web" mise/tasks/env/push
+  expect_fail "JWT_ACCESS_SECRET is @shared in apps/api but not in apps/web" mise/tasks/local/env/push
   expect_no_call "secrets set"
 }
 
 test_push_dry_run_writes_nothing() {
   local before out
   before="$(cat "$INFISICAL_STATE")"
-  out="$(mise/tasks/env/push --dry-run)"
-  expect_eq "$(head -n1 <<<"$out")" "Infisical env: dev"
+  out="$(mise/tasks/local/env/push --dry-run)"
+  expect_eq "$(head -n1 <<<"$out")" "Infisical env: local"
   expect_contains "$out" "7 to write, 0 deleted"
   expect_contains "$out" "dry run: nothing written"
   expect_no_call "secrets set"
@@ -289,27 +312,27 @@ test_push_dry_run_writes_nothing() {
 
 test_push_single_app() {
   rm apps/api/.env
-  mise/tasks/env/push --app web >/dev/null
-  expect_eq "$(remote_value dev /apps/web AUTH_SECRET)" "auth-secret-1"
-  expect_eq "$(remote_value dev /shared JWT_ACCESS_SECRET)" "jwt-secret-1"
-  expect_eq "$(remote_value dev /shared DATABASE_URL)" "<unset>"
-  expect_eq "$(remote_value dev /apps/api API_PORT)" "<unset>"
+  mise/tasks/local/env/push --app web >/dev/null
+  expect_eq "$(remote_value local /apps/web AUTH_SECRET)" "auth-secret-1"
+  expect_eq "$(remote_value local /shared JWT_ACCESS_SECRET)" "jwt-secret-1"
+  expect_eq "$(remote_value local /shared DATABASE_URL)" "<unset>"
+  expect_eq "$(remote_value local /apps/api API_PORT)" "<unset>"
 }
 
 test_push_unknown_app_fails() {
-  expect_fail "unknown app 'nope'" mise/tasks/env/push --app nope
+  expect_fail "unknown app 'nope'" mise/tasks/local/env/push --app nope
 }
 
 test_push_requires_env_file() {
   rm apps/web/.env
-  expect_fail "apps/web/.env not found; create it from apps/web/.env.example" mise/tasks/env/push
+  expect_fail "apps/web/.env not found; create it from apps/web/.env.example" mise/tasks/local/env/push
   expect_no_call "secrets set"
 }
 
 test_push_reports_extra_empty_and_missing_keys() {
   printf 'DATABASE_URL=postgres://db-secret-1/app\nAPI_PORT=\nEXTRA_FLAG=1\n' >apps/api/.env
   local out
-  out="$(mise/tasks/env/push --dry-run)"
+  out="$(mise/tasks/local/env/push --dry-run)"
   expect_contains "$out" "extra (not pushed): EXTRA_FLAG"
   expect_contains "$out" "empty, not pushed: API_PORT"
   expect_contains "$out" "missing in .env, not pushed: JWT_ACCESS_SECRET"
@@ -317,30 +340,30 @@ test_push_reports_extra_empty_and_missing_keys() {
 
 test_push_explains_login_on_auth_failure() {
   export FAKE_INFISICAL_FAIL=1
-  expect_fail "infisical login" mise/tasks/env/push
+  expect_fail "infisical login" mise/tasks/local/env/push
 }
 
 test_push_never_prints_values() {
   local out
-  out="$(mise/tasks/env/push --dry-run 2>&1)$(mise/tasks/env/push 2>&1)$(mise/tasks/env/push 2>&1)"
+  out="$(mise/tasks/local/env/push --dry-run 2>&1)$(mise/tasks/local/env/push 2>&1)$(mise/tasks/local/env/push 2>&1)"
   expect_no_secrets "$out"
 }
 
-# --- env:check ---
+# --- check ---
 
 test_check_skips_without_infisical_json() {
   rm .infisical.json
   local out
-  out="$(mise/tasks/env/check)"
+  out="$(mise/tasks/local/env/check)"
   expect_contains "$out" "skipping"
-  out="$(mise/tasks/env/check --remote)"
+  out="$(mise/tasks/local/env/check --remote)"
   expect_contains "$out" "skipping"
   expect_eq "$(wc -c <"$INFISICAL_LOG" | tr -d ' ')" 0
 }
 
 test_check_local_ok() {
   local out
-  out="$(mise/tasks/env/check)"
+  out="$(mise/tasks/local/env/check)"
   expect_eq "$(grep -c '^  ok$' <<<"$out")" 2
   expect_contains "$out" "✔ env matches .env.example"
   expect_eq "$(wc -c <"$INFISICAL_LOG" | tr -d ' ')" 0
@@ -348,7 +371,7 @@ test_check_local_ok() {
 
 test_check_local_reports_missing_and_extra() {
   printf 'JWT_ACCESS_SECRET=jwt-secret-1\nOLD_FLAG=1\n' >apps/web/.env
-  run_fails mise/tasks/env/check
+  run_fails mise/tasks/local/env/check
   expect_contains "$OUT" "missing: AUTH_SECRET"
   expect_contains "$OUT" "extra: OLD_FLAG"
   expect_contains "$OUT" "✖ 2 problems"
@@ -356,25 +379,25 @@ test_check_local_reports_missing_and_extra() {
 
 test_check_local_without_env_file() {
   rm apps/web/.env
-  run_fails mise/tasks/env/check --app web
+  run_fails mise/tasks/local/env/check --app web
   expect_contains "$OUT" "missing: AUTH_SECRET, JWT_ACCESS_SECRET"
   expect_not_contains "$OUT" "apps/api"
 }
 
 test_check_remote_ok_after_push() {
-  mise/tasks/env/push >/dev/null
+  mise/tasks/local/env/push >/dev/null
   local out
-  out="$(mise/tasks/env/check --remote)"
+  out="$(mise/tasks/local/env/check --remote)"
   expect_contains "$out" "✔ env matches .env.example"
 }
 
 test_check_remote_reports_problems() {
-  mise/tasks/env/push >/dev/null
-  state_set dev /apps/api DATABASE_URL postgres://raw
-  state_del dev /shared JWT_ACCESS_SECRET
-  state_set dev /apps/web OLD_FLAG 1
-  state_del dev /apps/web AUTH_SECRET
-  run_fails mise/tasks/env/check --remote
+  mise/tasks/local/env/push >/dev/null
+  state_set local /apps/api DATABASE_URL postgres://raw
+  state_del local /shared JWT_ACCESS_SECRET
+  state_set local /apps/web OLD_FLAG 1
+  state_del local /apps/web AUTH_SECRET
+  run_fails mise/tasks/local/env/check --remote
   expect_contains "$OUT" "not a shared ref: DATABASE_URL"
   expect_contains "$OUT" "shared missing: JWT_ACCESS_SECRET"
   expect_contains "$OUT" "extra: OLD_FLAG"
@@ -384,21 +407,21 @@ test_check_remote_reports_problems() {
 
 test_check_reports_inconsistent_markers() {
   printf 'JWT_ACCESS_SECRET=\nAUTH_SECRET=\n' >apps/web/.env.example
-  run_fails mise/tasks/env/check
+  run_fails mise/tasks/local/env/check
   expect_contains "$OUT" "shared markers"
   expect_contains "$OUT" "JWT_ACCESS_SECRET is @shared in apps/api but not in apps/web"
 }
 
 test_check_remote_explains_login_on_auth_failure() {
   export FAKE_INFISICAL_FAIL=1
-  expect_fail "infisical login" mise/tasks/env/check --remote
+  expect_fail "infisical login" mise/tasks/local/env/check --remote
 }
 
 test_check_never_prints_values() {
-  mise/tasks/env/push >/dev/null
-  state_set dev /apps/api DATABASE_URL postgres://db-secret-1/app
+  mise/tasks/local/env/push >/dev/null
+  state_set local /apps/api DATABASE_URL postgres://db-secret-1/app
   local out
-  out="$(mise/tasks/env/check --remote 2>&1 || true)$(mise/tasks/env/check 2>&1 || true)"
+  out="$(mise/tasks/local/env/check --remote 2>&1 || true)$(mise/tasks/local/env/check 2>&1 || true)"
   expect_no_secrets "$out"
 }
 
@@ -407,25 +430,25 @@ test_check_never_prints_values() {
 test_push_round_trips_special_characters() {
   local want='a"b\c: d #e$f'
   printf "DATABASE_URL=x\nJWT_ACCESS_SECRET=jwt-secret-1\nAPI_PORT='%s'\n" "$want" >apps/api/.env
-  mise/tasks/env/push >/dev/null
-  expect_eq "$(remote_value dev /apps/api API_PORT)" "$want"
+  mise/tasks/local/env/push >/dev/null
+  expect_eq "$(remote_value local /apps/api API_PORT)" "$want"
   : >"$INFISICAL_LOG"
-  expect_contains "$(mise/tasks/env/push)" "0 to write, 0 deleted"
+  expect_contains "$(mise/tasks/local/env/push)" "0 to write, 0 deleted"
 }
 
 test_push_shared_ref_label_needs_exact_reference() {
   printf 'DATABASE_URL=x\nJWT_ACCESS_SECRET=jwt-secret-1\nAPI_PORT=${other.ref}\n' >apps/api/.env
   local out
-  out="$(mise/tasks/env/push --dry-run)"
+  out="$(mise/tasks/local/env/push --dry-run)"
   expect_contains "$out" "+ DATABASE_URL (shared ref)"
   expect_contains "$out" "+ API_PORT"
   expect_not_contains "$out" "+ API_PORT (shared ref)"
 }
 
 test_remote_export_ignores_personal_overrides() {
-  mise/tasks/env/push >/dev/null
+  mise/tasks/local/env/push >/dev/null
   : >"$INFISICAL_LOG"
-  mise/tasks/env/check --remote >/dev/null
+  mise/tasks/local/env/check --remote >/dev/null
   expect_call "--secret-overriding=false"
 }
 
@@ -439,8 +462,120 @@ test_folder_names_fails_on_unexpected_output() {
 }
 
 test_folders_get_is_silent() {
-  mise/tasks/env/push >/dev/null
-  expect_call "secrets folders get --env dev --path / -o json --silent"
+  mise/tasks/local/env/push >/dev/null
+  expect_call "secrets folders get --env local --path / -o json --silent"
+}
+
+test_check_staging_reads_its_file() {
+  printf 'AUTH_SECRET=x\n' >apps/web/.env.staging
+  run_fails mise/tasks/staging/env/check --app web
+  expect_contains "$OUT" "apps/web/.env.staging"
+  expect_contains "$OUT" "missing: JWT_ACCESS_SECRET"
+}
+
+# --- pull ---
+
+test_pull_skips_without_infisical_json() {
+  rm .infisical.json
+  expect_contains "$(mise/tasks/local/env/pull)" "skipping"
+  expect_eq "$(wc -c <"$INFISICAL_LOG" | tr -d ' ')" 0
+}
+
+test_pull_after_push_is_a_noop() {
+  mise/tasks/local/env/push >/dev/null
+  local before out
+  before="$(cat apps/api/.env)"
+  out="$(mise/tasks/local/env/pull)"
+  expect_contains "$out" "0 to write"
+  expect_eq "$(grep -c '^  no changes$' <<<"$out")" 2
+  expect_eq "$(cat apps/api/.env)" "$before"
+}
+
+test_pull_resolves_shared_refs_into_missing_file() {
+  mise/tasks/local/env/push >/dev/null
+  mkdir -p "$SANDBOX/keep" && mv apps/web/.env "$SANDBOX/keep/"
+  local out
+  out="$(mise/tasks/local/env/pull --app web)"
+  expect_contains "$out" "+ JWT_ACCESS_SECRET"
+  expect_contains "$out" "Pulled 2 secret(s) from local"
+  source tools/env/lib.sh
+  expect_eq "$(dotenv_get apps/web/.env JWT_ACCESS_SECRET)" "jwt-secret-1"
+  expect_eq "$(dotenv_get apps/web/.env AUTH_SECRET)" "auth-secret-1"
+  expect_contains "$(cat apps/web/.env)" "JWT_ACCESS_SECRET=jwt-secret-1"
+}
+
+test_pull_updates_values_and_keeps_other_lines() {
+  mise/tasks/local/env/push >/dev/null
+  state_set local /apps/api API_PORT 9000
+  printf '# keep me\nLOCAL_ONLY=1\n' >>apps/api/.env
+  local out
+  out="$(mise/tasks/local/env/pull)"
+  expect_contains "$out" "~ API_PORT (value changed)"
+  expect_contains "$out" "1 to write"
+  source tools/env/lib.sh
+  expect_eq "$(dotenv_get apps/api/.env API_PORT)" "9000"
+  expect_eq "$(dotenv_get apps/api/.env LOCAL_ONLY)" "1"
+  expect_contains "$(cat apps/api/.env)" "# keep me"
+  expect_contains "$(cat apps/api/.env)" "export JWT_ACCESS_SECRET=jwt-secret-1 # local note"
+}
+
+test_pull_reports_missing_and_extra_remote_keys() {
+  mise/tasks/local/env/push >/dev/null
+  state_del local /apps/api API_PORT
+  state_set local /apps/api LEGACY_FLAG on
+  local out
+  out="$(mise/tasks/local/env/pull --dry-run)"
+  expect_contains "$out" "missing on remote, not pulled: API_PORT"
+  expect_contains "$out" "extra on remote (not pulled): LEGACY_FLAG"
+}
+
+test_pull_dry_run_writes_nothing() {
+  mise/tasks/local/env/push >/dev/null
+  state_set local /apps/api API_PORT 9000
+  local before out
+  before="$(cat apps/api/.env)"
+  out="$(mise/tasks/local/env/pull --dry-run)"
+  expect_contains "$out" "~ API_PORT (value changed)"
+  expect_contains "$out" "dry run: nothing written"
+  expect_eq "$(cat apps/api/.env)" "$before"
+}
+
+test_pull_staging_writes_its_file() {
+  mise/tasks/local/env/push >/dev/null
+  state_set staging /apps/web AUTH_SECRET staging-auth
+  jq '.folders.staging = ["/apps", "/apps/web"]' "$INFISICAL_STATE" >"$SANDBOX/s" && mv "$SANDBOX/s" "$INFISICAL_STATE"
+  mise/tasks/staging/env/pull --app web >/dev/null
+  source tools/env/lib.sh
+  expect_eq "$(dotenv_get apps/web/.env.staging AUTH_SECRET)" "staging-auth"
+  expect_eq "$(dotenv_get apps/web/.env AUTH_SECRET)" "auth-secret-1"
+}
+
+test_pull_round_trips_special_characters() {
+  mise/tasks/local/env/push >/dev/null
+  local v1='a"b\c: d #e$f' v2="it's \$HOME" v3='p@ss/w0rd+=,'
+  state_set local /apps/api API_PORT "$v1"
+  state_set local /apps/web AUTH_SECRET "$v2"
+  mise/tasks/local/env/pull >/dev/null
+  source tools/env/lib.sh
+  expect_eq "$(dotenv_get apps/api/.env API_PORT)" "$v1"
+  expect_eq "$(dotenv_get apps/web/.env AUTH_SECRET)" "$v2"
+  state_set local /apps/web AUTH_SECRET "$v3"
+  mise/tasks/local/env/pull >/dev/null
+  expect_contains "$(cat apps/web/.env)" "AUTH_SECRET=$v3"
+}
+
+test_pull_rejects_unwritable_value() {
+  mise/tasks/local/env/push >/dev/null
+  state_set local /apps/api API_PORT "a'b\"c"
+  expect_fail "cannot write API_PORT: the value has both quote types" mise/tasks/local/env/pull
+}
+
+test_pull_never_prints_values() {
+  mise/tasks/local/env/push >/dev/null
+  state_set local /apps/api API_PORT db-secret-1
+  local out
+  out="$(mise/tasks/local/env/pull --dry-run 2>&1)$(mise/tasks/local/env/pull 2>&1)"
+  expect_no_secrets "$out"
 }
 
 main "$@"

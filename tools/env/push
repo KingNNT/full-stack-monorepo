@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-#MISE description="Push apps/*/.env to Infisical (/apps/<app>; @shared keys via /shared): env:push [--env <slug>] [--app <name>] [--dry-run]"
-# Keys come from each app's .env.example, values from apps/<app>/.env.
+# Pushes each app's dotenv file to Infisical: tools/env/push <env> [--app <name>] [--dry-run]
+# Run through `mise run <env>:env:push`. Keys come from each app's
+# .env.example, values from apps/<app>/.env (local) or apps/<app>/.env.<env>;
+# @shared keys go to /shared and are referenced from /apps/<app>.
 # Remote-only keys are kept. Values are never printed.
 set -euo pipefail
 # shellcheck source=tools/env/lib.sh
@@ -8,15 +10,13 @@ source "$(git rev-parse --show-toplevel)/tools/env/lib.sh"
 
 require_infisical_config
 
-usage="usage: mise run env:push [--env <slug>] [--app <name>] [--dry-run]"
-env=dev only="" dry_run=0
+env="${1:-}"
+require_env "$env"
+shift
+usage="usage: mise run $env:env:push [--app <name>] [--dry-run]"
+only="" dry_run=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --env)
-      [ $# -ge 2 ] || die "$usage"
-      env="$2"
-      shift 2
-      ;;
     --app)
       [ $# -ge 2 ] || die "$usage"
       only="$2"
@@ -53,11 +53,12 @@ put() { # <folder> <key> <value>
 
 while IFS= read -r -u 3 app; do
   if [ -z "$only" ] || [ "$app" = "$only" ]; then selected=1; else selected=0; fi
-  file="$ENV_ROOT/apps/$app/.env"
+  rel="$(env_file "$env" "$app")"
+  file="$ENV_ROOT/$rel"
   folder="/apps/$app"
   if [ ! -f "$file" ]; then
     if [ "$selected" = 0 ]; then continue; fi
-    die "apps/$app/.env not found; create it from apps/$app/.env.example"
+    die "$rel not found; create it from apps/$app/.env.example (or: mise run $env:env:pull)"
   fi
   if [ "$selected" = 1 ]; then
     desired="$(F="$folder" jq -c '.[env.F] //= {}' <<<"$desired")"
@@ -66,7 +67,7 @@ while IFS= read -r -u 3 app; do
     rc=0
     value="$(dotenv_get "$file" "$key")" || rc=$?
     if [ "$rc" = 3 ]; then
-      if [ "$selected" = 1 ]; then note "$folder" "missing in .env, not pushed: $key"; fi
+      if [ "$selected" = 1 ]; then note "$folder" "missing in ${rel##*/}, not pushed: $key"; fi
       continue
     elif [ "$rc" != 0 ]; then
       exit "$rc"
@@ -80,7 +81,7 @@ while IFS= read -r -u 3 app; do
       if [ -z "$first" ]; then
         shared="$(K="$key" V="$value" A="$app" jq -c '.[env.K] = {value: env.V, app: env.A}' <<<"$shared")"
       elif ! K="$key" V="$value" jq -e '.[env.K].value == env.V' <<<"$shared" >/dev/null; then
-        die "@shared $key differs between apps/$first/.env and apps/$app/.env; make the values equal"
+        die "@shared $key differs between $(env_file "$env" "$first") and $rel; make the values equal"
       fi
       if [ "$selected" = 1 ]; then
         put "$folder" "$key" "$(shared_ref "$env" "$key")"
