@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+#MISE description="Push apps/*/.env to Infisical (/apps/<app>; @shared keys via /shared): env:push [--env <slug>] [--app <name>] [--dry-run]"
+# Keys come from each app's .env.example, values from apps/<app>/.env.
+# Remote-only keys are kept. Values are never printed.
+set -euo pipefail
+# shellcheck source=tools/env/lib.sh
+source "$(git rev-parse --show-toplevel)/tools/env/lib.sh"
+
+require_infisical_config
+
+usage="usage: mise run env:push [--env <slug>] [--app <name>] [--dry-run]"
+env=dev only="" dry_run=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --env)
+      [ $# -ge 2 ] || die "$usage"
+      env="$2"
+      shift 2
+      ;;
+    --app)
+      [ $# -ge 2 ] || die "$usage"
+      only="$2"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    *) die "unknown argument '$1'; $usage" ;;
+  esac
+done
+require_infisical_cli
+
+apps="$(list_apps)"
+[ -n "$apps" ] || die "no apps/*/.env.example found"
+if [ -n "$only" ] && ! grep -qxF -- "$only" <<<"$apps"; then
+  die "unknown app '$only' (apps: $(join_lines "$apps"))"
+fi
+
+markers="$(shared_marker_problems)"
+[ -z "$markers" ] || die "inconsistent @shared markers in .env.example:"$'\n'"$markers"
+
+desired='{}'    # {"<folder>": {"KEY": "value"}}
+shared='{}'     # {"KEY": {"value": "…", "app": "<first app that set it>"}}
+shared_keys=""  # @shared keys of the selected apps, one per line
+notes=""        # "<folder><TAB><note>" lines
+
+note() { notes+="$1"$'\t'"$2"$'\n'; }
+
+put() { # <folder> <key> <value>
+  desired="$(F="$1" K="$2" V="$3" jq -c '.[env.F][env.K] = env.V' <<<"$desired")"
+}
+
+while IFS= read -r -u 3 app; do
+  if [ -z "$only" ] || [ "$app" = "$only" ]; then selected=1; else selected=0; fi
+  file="$ENV_ROOT/apps/$app/.env"
+  folder="/apps/$app"
+  if [ ! -f "$file" ]; then
+    if [ "$selected" = 0 ]; then continue; fi
+    die "apps/$app/.env not found; create it from apps/$app/.env.example"
+  fi
+  if [ "$selected" = 1 ]; then
+    desired="$(F="$folder" jq -c '.[env.F] //= {}' <<<"$desired")"
+  fi
+  while IFS=$'\t' read -r -u 4 key kind; do
+    rc=0
+    value="$(dotenv_get "$file" "$key")" || rc=$?
+    if [ "$rc" = 3 ]; then
+      if [ "$selected" = 1 ]; then note "$folder" "missing in .env, not pushed: $key"; fi
+      continue
+    elif [ "$rc" != 0 ]; then
+      exit "$rc"
+    fi
+    if [ -z "$value" ]; then
+      if [ "$selected" = 1 ]; then note "$folder" "empty, not pushed: $key"; fi
+      continue
+    fi
+    if [ "$kind" = shared ]; then
+      first="$(K="$key" jq -r '.[env.K].app // empty' <<<"$shared")"
+      if [ -z "$first" ]; then
+        shared="$(K="$key" V="$value" A="$app" jq -c '.[env.K] = {value: env.V, app: env.A}' <<<"$shared")"
+      elif ! K="$key" V="$value" jq -e '.[env.K].value == env.V' <<<"$shared" >/dev/null; then
+        die "@shared $key differs between apps/$first/.env and apps/$app/.env; make the values equal"
+      fi
+      if [ "$selected" = 1 ]; then
+        put "$folder" "$key" "$(shared_ref "$env" "$key")"
+        shared_keys+="$key"$'\n'
+      fi
+    elif [ "$selected" = 1 ]; then
+      put "$folder" "$key" "$value"
+    fi
+  done 4< <(example_keys "$app")
+  if [ "$selected" = 1 ]; then
+    extra="$(minus "$(dotenv_keys "$file" | sorted)" "$(example_keys "$app" | cut -f1 | sorted)")"
+    if [ -n "$extra" ]; then note "$folder" "extra (not pushed): $(join_lines "$extra")"; fi
+  fi
+done 3< <(list_apps)
+
+if [ -n "$shared_keys" ]; then
+  desired="$(SHARED="$shared" KEYS="$shared_keys" jq -c '
+    . + {"/shared": ((env.SHARED | fromjson)
+      | with_entries(select(.key as $k | env.KEYS | split("\n") | index($k)))
+      | map_values(.value))}' <<<"$desired")"
+fi
+
+# shellcheck disable=SC2016 # a jq program, not shell
+diff_program='(env.WANT | fromjson) as $w | (env.HAVE | fromjson) as $h
+  | ( ($w | keys[]) as $k
+      | if (($h | has($k)) | not) then
+          "+ \($k)\(if ($w[$k] == "${\(env.ENVSLUG).shared.\($k)}") then " (shared ref)" else "" end)"
+        elif $h[$k] != $w[$k] then "~ \($k) (value changed)"
+        else empty end ),
+    ( ($h | keys[]) as $k | select(($w | has($k)) | not) | "! \($k) (only on remote, kept)" )'
+# shellcheck disable=SC2016 # a jq program, not shell
+changes_program='(env.WANT | fromjson) as $w | (env.HAVE | fromjson) as $h
+  | $w | with_entries(select($h[.key] != .value))'
+
+plan_dir="$(umask 077 && mktemp -d)"
+trap 'rm -rf "$plan_dir"' EXIT
+total=0
+writes=""
+echo "Infisical env: $env"
+for folder in $(jq -r 'keys | map(select(. == "/shared")) + map(select(. != "/shared")) | .[]' <<<"$desired"); do
+  want="$(F="$folder" jq -c '.[env.F]' <<<"$desired")"
+  have="$(remote_object "$env" "$folder")"
+  lines="$(ENVSLUG="$env" WANT="$want" HAVE="$have" jq -nr "$diff_program")"
+  echo "$folder"
+  # shellcheck disable=SC2001 # indenting every line of a multi-line string
+  if [ -n "$lines" ]; then sed 's/^/  /' <<<"$lines"; else echo "  no changes"; fi
+  awk -F'\t' -v f="$folder" '$1 == f { print "  " $2 }' <<<"$notes"
+  changes="$(WANT="$want" HAVE="$have" jq -nc "$changes_program")"
+  count="$(jq 'length' <<<"$changes")"
+  if [ "$count" -gt 0 ]; then
+    total=$((total + count))
+    yaml="$plan_dir/$total.yaml"
+    jq -r 'to_entries[] | "\(.key | tojson): \(.value | tojson)"' <<<"$changes" >"$yaml"
+    writes+="$folder"$'\t'"$yaml"$'\n'
+  fi
+done
+echo "$total to write, 0 deleted"
+
+if [ "$dry_run" = 1 ]; then
+  echo "dry run: nothing written"
+  exit 0
+fi
+[ "$total" -gt 0 ] || exit 0
+
+while IFS=$'\t' read -r -u 3 folder yaml; do
+  ensure_folder "$env" "$folder"
+  infisical_run secrets set --file "$yaml" --env "$env" --path "$folder" --silent >/dev/null
+done 3<<<"${writes%$'\n'}"
+echo "Pushed $total secret(s) to $env"

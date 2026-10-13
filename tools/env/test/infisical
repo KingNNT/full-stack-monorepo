@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016 # jq programs use $vars that must not expand in the shell
+# Test double for the infisical CLI, backed by the JSON file $INFISICAL_STATE:
+#   {"folders": {"<env>": ["/apps", "/apps/api"]},
+#    "secrets": {"<env>": {"<path>": {"KEY": "value"}}}}
+# Implements only the calls tools/env/lib.sh makes and logs argv to
+# $INFISICAL_LOG. FAKE_INFISICAL_FAIL=1 makes every call fail like an
+# expired login.
+set -euo pipefail
+printf '%s\n' "$*" >>"$INFISICAL_LOG"
+if [ "${FAKE_INFISICAL_FAIL:-0}" = 1 ]; then
+  echo "error: unauthorized, please log in" >&2
+  exit 1
+fi
+
+cmd="" env=dev path=/ name="" file=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --env | --path | --name | --file | --format | -o)
+      opt="$1" val="$2"
+      shift 2
+      ;;
+    --*=*)
+      opt="${1%%=*}" val="${1#*=}"
+      shift
+      ;;
+    -*)
+      shift
+      continue
+      ;;
+    *)
+      cmd="$cmd $1"
+      shift
+      continue
+      ;;
+  esac
+  case "$opt" in
+    --env) env="$val" ;;
+    --path) path="$val" ;;
+    --name) name="$val" ;;
+    --file) file="$val" ;;
+  esac
+done
+
+state() { jq -c "$@" "$INFISICAL_STATE"; }
+
+save() {
+  local tmp
+  tmp="$(mktemp)"
+  jq "$@" "$INFISICAL_STATE" >"$tmp"
+  mv "$tmp" "$INFISICAL_STATE"
+}
+
+require_folder() {
+  if [ "$path" != / ] \
+    && ! state -e --arg e "$env" --arg p "$path" 'any((.folders[$e] // [])[]; . == $p)' >/dev/null; then
+    echo "error: folder $path not found in $env" >&2
+    exit 1
+  fi
+}
+
+case "$cmd" in
+  " secrets folders get")
+    require_folder
+    state --arg e "$env" --arg p "$path" '[(.folders[$e] // [])[]
+      | select((sub("/[^/]+$"; "") | if . == "" then "/" else . end) == $p)
+      | {name: sub(".*/"; "")}]'
+    ;;
+  " secrets folders create")
+    require_folder
+    save --arg e "$env" --arg f "${path%/}/$name" '.folders[$e] = (((.folders[$e] // []) + [$f]) | unique)'
+    ;;
+  " export")
+    require_folder
+    state --arg e "$env" --arg p "$path" '(.secrets[$e][$p] // {}) | to_entries | map({key, value})'
+    ;;
+  " secrets set")
+    require_folder
+    while IFS= read -r line || [ -n "$line" ]; do
+      [ -n "$line" ] || continue
+      save --arg e "$env" --arg p "$path" --argjson k "${line%%\": *}\"" --argjson v "${line#*\": }" \
+        '.secrets[$e][$p][$k] = $v'
+    done <"$file"
+    echo "secrets set (values masked)"
+    ;;
+  *)
+    echo "fake infisical: unsupported command:$cmd" >&2
+    exit 2
+    ;;
+esac
