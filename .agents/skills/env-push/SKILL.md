@@ -1,6 +1,6 @@
 ---
 name: env-push
-description: Push each app's env file to the Infisical environment of the same name with `mise run <env>:env:push` (<env> = local, dev, staging or prod) — /apps/<app> per app, keys marked `# @shared` in .env.example stored once in /shared and referenced from the apps. Use when the user asks to push, upload or publish env vars or secrets to Infisical, or to share a variable between apps. Only applies when .infisical.json exists at the repo root.
+description: Push each app's env file to the Infisical environment of the same name with `mise run <env>:env:push` (<env> = local, rpi, dev, staging or prod) — /apps/<app> per app, keys marked `# @shared` in .env.example stored once in /shared and referenced from the apps. Use when the user asks to push, upload or publish env vars or secrets to Infisical, or to share a variable between apps. Only applies when .infisical.json exists at the repo root.
 ---
 
 # Push env to Infisical
@@ -16,12 +16,16 @@ reads its own git-ignored file:
 
 | Task | Reads | Infisical env |
 |---|---|---|
-| `local:env:push` | `apps/<app>/.env` | `local` |
+| `local:env:push` | `apps/<app>/.env.local` | `local` |
+| `rpi:env:push` | `apps/<app>/.env.rpi` | `rpi` |
 | `dev:env:push` | `apps/<app>/.env.dev` | `dev` |
 | `staging:env:push` | `apps/<app>/.env.staging` | `staging` |
 | `prod:env:push` | `apps/<app>/.env.prod` | `prod` |
 
-The Infisical project must have an environment with that exact slug.
+The Infisical project must have an environment with that exact slug. Push
+never reads `apps/<app>/.env` (that is pull's output, the file the apps load)
+and refuses to run while any app has a `.env.<suffix>` file whose suffix is
+not one of these environments (`.env.example` and `.env.test` are fine).
 
 ## Layout (per Infisical environment)
 
@@ -68,6 +72,7 @@ Diff lines: `+ KEY` new (`+ KEY (shared ref)` for a @shared key), `~ KEY (value 
 | `Infisical is not configured` | No `.infisical.json`; nothing to do. |
 | `infisical CLI not found` | Ask the user to install the Infisical CLI. |
 | `run: infisical login` | Ask the user to run `infisical login` (or set `INFISICAL_TOKEN`) and check that the Infisical environment exists. |
-| `apps/<app>/.env… not found` | The user creates it from `.env.example`, or pulls it (env-pull skill). |
+| `apps/<app>/.env.<env> not found` | The user creates it from `.env.example`. |
+| `not supported: apps/<app>/.env.<x>, …` | The user renames the file to a supported `.env.<env>` or removes it. |
 | `@shared KEY differs between …` | The user makes the value equal in every app's file. |
 | `KEY is @shared in apps/a but not in apps/b` | Mark the key `# @shared` in every app's `.env.example`, or in none. |

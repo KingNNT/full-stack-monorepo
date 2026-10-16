@@ -1,6 +1,6 @@
 ---
 name: env-pull
-description: Pull secrets from the Infisical environment of the same name into each app's env file with `mise run <env>:env:pull` (<env> = local, dev, staging or prod), @shared references resolved. Use when the user asks to pull, download, fetch or sync env vars or secrets from Infisical, or to set up a missing .env from Infisical. Only applies when .infisical.json exists at the repo root.
+description: Pull secrets from the Infisical environment of the same name into each app's .env with `mise run <env>:env:pull` (<env> = local, rpi, dev, staging or prod), @shared references resolved. Use when the user asks to pull, download, fetch or sync env vars or secrets from Infisical, or to set up a missing .env from Infisical. Only applies when .infisical.json exists at the repo root.
 ---
 
 # Pull env from Infisical
@@ -11,12 +11,11 @@ and stop.
 
 ## Environments
 
-| Task | Infisical env | Writes |
-|---|---|---|
-| `local:env:pull` | `local` | `apps/<app>/.env` |
-| `dev:env:pull` | `dev` | `apps/<app>/.env.dev` |
-| `staging:env:pull` | `staging` | `apps/<app>/.env.staging` |
-| `prod:env:pull` | `prod` | `apps/<app>/.env.prod` |
+Every `<env>:env:pull` (`<env>` = `local`, `rpi`, `dev`, `staging`, `prod`)
+reads the Infisical environment of the same name and writes
+`apps/<app>/.env` — the only env file the apps load. It never writes
+`.env.<env>` (those are push sources). Pulling another environment
+overwrites the values pulled before, so confirm the environment first.
 
 Only keys declared in `apps/<app>/.env.example` are pulled, from
 `/apps/<app>` with `${<env>.shared.KEY}` references resolved. Pulled keys
@@ -39,7 +38,7 @@ Diff lines: `+ KEY` (not in the file yet), `~ KEY (value changed)`. Notes:
 
 - Read, print, paste or edit env files or secret values — the task writes
   them and its output never shows values.
-- Pull into an environment's file the user did not name.
+- Pull from an environment the user did not name.
 
 ## Common failures
 

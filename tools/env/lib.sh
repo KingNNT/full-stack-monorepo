@@ -6,7 +6,7 @@
 ENV_ROOT="$(git rev-parse --show-toplevel)"
 KEY_RE='^([A-Za-z_][A-Za-z0-9_]*)=(.*)$'
 # Task environments; each is also the Infisical environment slug.
-ENVS="local dev staging prod"
+ENVS="local rpi dev staging prod"
 SHARED_RE='#.*@shared'
 
 die() {
@@ -34,14 +34,10 @@ require_env() { # <env>
   esac
 }
 
-# The dotenv file of <app> in <env>, relative to ENV_ROOT: apps/<app>/.env
-# for local, apps/<app>/.env.<env> otherwise.
+# The dotenv file push and check read for <app> in <env>, relative to
+# ENV_ROOT. Pull always writes apps/<app>/.env, the only file the apps load.
 env_file() { # <env> <app>
-  if [ "$1" = local ]; then
-    echo "apps/$2/.env"
-  else
-    echo "apps/$2/.env.$1"
-  fi
+  echo "apps/$2/.env.$1"
 }
 
 # App names (apps/<name>/ with a .env.example), one per line.
@@ -52,6 +48,22 @@ list_apps() {
       basename "$dir"
     fi
   done
+}
+
+# Dies when an app has a .env.<suffix> file whose suffix is not an
+# environment (.env.example, .env.test and pull's temp files are allowed).
+require_supported_env_files() {
+  local app file suffix bad=""
+  while IFS= read -r app; do
+    for file in "$ENV_ROOT/apps/$app"/.env.*; do
+      [ -e "$file" ] || continue
+      suffix="${file##*/.env.}"
+      case "$suffix" in example | test | pull.*) continue ;; esac
+      case " $ENVS " in *" $suffix "*) continue ;; esac
+      bad+="apps/$app/.env.$suffix"$'\n'
+    done
+  done < <(list_apps)
+  [ -z "$bad" ] || die "not supported: $(join_lines "$bad"); env files must be .env.<env> for ${ENVS// /, }"
 }
 
 # Sets LINE to a dotenv line without leading whitespace and `export `.

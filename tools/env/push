@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Pushes each app's dotenv file to Infisical: tools/env/push <env> [--app <name>] [--dry-run]
 # Run through `mise run <env>:env:push`. Keys come from each app's
-# .env.example, values from apps/<app>/.env (local) or apps/<app>/.env.<env>;
-# @shared keys go to /shared and are referenced from /apps/<app>.
+# .env.example, values from apps/<app>/.env.<env>; any other .env.<suffix> is
+# rejected. @shared keys go to /shared and are referenced from /apps/<app>.
 # Remote-only keys are kept. Values are never printed.
 set -euo pipefail
 # shellcheck source=tools/env/lib.sh
@@ -33,6 +33,7 @@ require_infisical_cli
 
 apps="$(list_apps)"
 [ -n "$apps" ] || die "no apps/*/.env.example found"
+require_supported_env_files
 if [ -n "$only" ] && ! grep -qxF -- "$only" <<<"$apps"; then
   die "unknown app '$only' (apps: $(join_lines "$apps"))"
 fi
@@ -58,7 +59,7 @@ while IFS= read -r -u 3 app; do
   folder="/apps/$app"
   if [ ! -f "$file" ]; then
     if [ "$selected" = 0 ]; then continue; fi
-    die "$rel not found; create it from apps/$app/.env.example (or: mise run $env:env:pull)"
+    die "$rel not found; create it from apps/$app/.env.example"
   fi
   if [ "$selected" = 1 ]; then
     desired="$(F="$folder" jq -c '.[env.F] //= {}' <<<"$desired")"

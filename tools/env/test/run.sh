@@ -25,7 +25,7 @@ setup() {
   cd "$SANDBOX/repo"
   mkdir -p apps/api apps/web tools mise/tasks
   cp -R "$ROOT/tools/env" tools/
-  for e in local dev staging prod; do
+  for e in local rpi dev staging prod; do
     mkdir -p "mise/tasks/$e"
     cp -R "$ROOT/mise/tasks/$e/env" "mise/tasks/$e/"
   done
@@ -36,7 +36,7 @@ DATABASE_URL=postgres://localhost/app   # @shared
 JWT_ACCESS_SECRET=                      # @shared
 API_PORT=8000
 EOF
-  cat >apps/api/.env <<'EOF'
+  cat >apps/api/.env.local <<'EOF'
 DATABASE_URL="postgres://db-secret-1/app"
 export JWT_ACCESS_SECRET=jwt-secret-1 # local note
 API_PORT=8001
@@ -45,7 +45,7 @@ EOF
 JWT_ACCESS_SECRET=   # @shared
 AUTH_SECRET=
 EOF
-  cat >apps/web/.env <<'EOF'
+  cat >apps/web/.env.local <<'EOF'
 JWT_ACCESS_SECRET='jwt-secret-1'
 AUTH_SECRET=auth-secret-1
 EOF
@@ -145,7 +145,7 @@ EOF
 test_lib_dotenv_get_missing_key_returns_3() {
   source tools/env/lib.sh
   local rc=0
-  dotenv_get apps/api/.env NOPE >/dev/null || rc=$?
+  dotenv_get apps/api/.env.local NOPE >/dev/null || rc=$?
   expect_eq "$rc" 3
 }
 
@@ -175,8 +175,8 @@ test_lib_marker_problems() {
 
 test_lib_env_file() {
   source tools/env/lib.sh
-  expect_eq "$(env_file local api)" "apps/api/.env"
-  expect_eq "$(env_file prod web)" "apps/web/.env.prod"
+  expect_eq "$(env_file local api)" "apps/api/.env.local"
+  expect_eq "$(env_file rpi web)" "apps/web/.env.rpi"
 }
 
 test_runner_fails_when_no_test_matches() {
@@ -241,10 +241,10 @@ test_push_first_run_creates_layout() {
 }
 
 test_push_staging_uses_its_file_and_slug() {
-  cp apps/api/.env apps/api/.env.staging
+  cp apps/api/.env.local apps/api/.env.staging
   sed -i.bak 's/^API_PORT=.*/API_PORT=7000/' apps/api/.env.staging
   rm apps/api/.env.staging.bak
-  cp apps/web/.env apps/web/.env.staging
+  cp apps/web/.env.local apps/web/.env.staging
   mise/tasks/staging/env/push >/dev/null
   expect_eq "$(remote_value staging /apps/api DATABASE_URL)" '${staging.shared.DATABASE_URL}'
   expect_eq "$(remote_value staging /apps/api API_PORT)" "7000"
@@ -252,12 +252,12 @@ test_push_staging_uses_its_file_and_slug() {
 }
 
 test_push_staging_requires_its_file() {
-  expect_fail "apps/api/.env.staging not found; create it from apps/api/.env.example (or: mise run staging:env:pull)" mise/tasks/staging/env/push
+  expect_fail "apps/api/.env.staging not found; create it from apps/api/.env.example" mise/tasks/staging/env/push
   expect_no_call "secrets set"
 }
 
 test_push_rejects_unknown_environment() {
-  expect_fail "unknown environment 'qa' (environments: local, dev, staging, prod)" tools/env/push qa
+  expect_fail "unknown environment 'qa' (environments: local, rpi, dev, staging, prod)" tools/env/push qa
 }
 
 test_push_second_run_is_a_noop() {
@@ -273,8 +273,8 @@ test_push_second_run_is_a_noop() {
 
 test_push_updates_changed_values_and_keeps_remote_only_keys() {
   mise/tasks/local/env/push >/dev/null
-  sed -i.bak 's/^API_PORT=.*/API_PORT=9000/' apps/api/.env
-  rm apps/api/.env.bak
+  sed -i.bak 's/^API_PORT=.*/API_PORT=9000/' apps/api/.env.local
+  rm apps/api/.env.local.bak
   state_set local /apps/api LEGACY_FLAG on
   local out
   out="$(mise/tasks/local/env/push)"
@@ -286,8 +286,8 @@ test_push_updates_changed_values_and_keeps_remote_only_keys() {
 }
 
 test_push_rejects_shared_value_conflict() {
-  printf 'JWT_ACCESS_SECRET=other-jwt\nAUTH_SECRET=auth-secret-1\n' >apps/web/.env
-  expect_fail "@shared JWT_ACCESS_SECRET differs between apps/api/.env and apps/web/.env" mise/tasks/local/env/push
+  printf 'JWT_ACCESS_SECRET=other-jwt\nAUTH_SECRET=auth-secret-1\n' >apps/web/.env.local
+  expect_fail "@shared JWT_ACCESS_SECRET differs between apps/api/.env.local and apps/web/.env.local" mise/tasks/local/env/push
   expect_no_call "secrets set"
   expect_no_call "folders create"
 }
@@ -311,7 +311,7 @@ test_push_dry_run_writes_nothing() {
 }
 
 test_push_single_app() {
-  rm apps/api/.env
+  rm apps/api/.env.local
   mise/tasks/local/env/push --app web >/dev/null
   expect_eq "$(remote_value local /apps/web AUTH_SECRET)" "auth-secret-1"
   expect_eq "$(remote_value local /shared JWT_ACCESS_SECRET)" "jwt-secret-1"
@@ -319,23 +319,43 @@ test_push_single_app() {
   expect_eq "$(remote_value local /apps/api API_PORT)" "<unset>"
 }
 
+test_push_rpi_uses_its_file_and_slug() {
+  cp apps/api/.env.local apps/api/.env.rpi
+  cp apps/web/.env.local apps/web/.env.rpi
+  mise/tasks/rpi/env/push >/dev/null
+  expect_eq "$(remote_value rpi /apps/api DATABASE_URL)" '${rpi.shared.DATABASE_URL}'
+  expect_eq "$(remote_value rpi /apps/web AUTH_SECRET)" "auth-secret-1"
+}
+
+test_push_ignores_plain_env_file() {
+  printf 'API_PORT=1\n' >apps/api/.env
+  mise/tasks/local/env/push >/dev/null
+  expect_eq "$(remote_value local /apps/api API_PORT)" "8001"
+}
+
+test_push_rejects_unsupported_env_files() {
+  touch apps/api/.env.production apps/web/.env.qa apps/web/.env.test apps/web/.env.pull.abc
+  expect_fail "not supported: apps/api/.env.production, apps/web/.env.qa; env files must be .env.<env> for local, rpi, dev, staging, prod" mise/tasks/local/env/push
+  expect_no_call "secrets set"
+}
+
 test_push_unknown_app_fails() {
   expect_fail "unknown app 'nope'" mise/tasks/local/env/push --app nope
 }
 
 test_push_requires_env_file() {
-  rm apps/web/.env
-  expect_fail "apps/web/.env not found; create it from apps/web/.env.example" mise/tasks/local/env/push
+  rm apps/web/.env.local
+  expect_fail "apps/web/.env.local not found; create it from apps/web/.env.example" mise/tasks/local/env/push
   expect_no_call "secrets set"
 }
 
 test_push_reports_extra_empty_and_missing_keys() {
-  printf 'DATABASE_URL=postgres://db-secret-1/app\nAPI_PORT=\nEXTRA_FLAG=1\n' >apps/api/.env
+  printf 'DATABASE_URL=postgres://db-secret-1/app\nAPI_PORT=\nEXTRA_FLAG=1\n' >apps/api/.env.local
   local out
   out="$(mise/tasks/local/env/push --dry-run)"
   expect_contains "$out" "extra (not pushed): EXTRA_FLAG"
   expect_contains "$out" "empty, not pushed: API_PORT"
-  expect_contains "$out" "missing in .env, not pushed: JWT_ACCESS_SECRET"
+  expect_contains "$out" "missing in .env.local, not pushed: JWT_ACCESS_SECRET"
 }
 
 test_push_explains_login_on_auth_failure() {
@@ -370,7 +390,7 @@ test_check_local_ok() {
 }
 
 test_check_local_reports_missing_and_extra() {
-  printf 'JWT_ACCESS_SECRET=jwt-secret-1\nOLD_FLAG=1\n' >apps/web/.env
+  printf 'JWT_ACCESS_SECRET=jwt-secret-1\nOLD_FLAG=1\n' >apps/web/.env.local
   run_fails mise/tasks/local/env/check
   expect_contains "$OUT" "missing: AUTH_SECRET"
   expect_contains "$OUT" "extra: OLD_FLAG"
@@ -378,7 +398,7 @@ test_check_local_reports_missing_and_extra() {
 }
 
 test_check_local_without_env_file() {
-  rm apps/web/.env
+  rm apps/web/.env.local
   run_fails mise/tasks/local/env/check --app web
   expect_contains "$OUT" "missing: AUTH_SECRET, JWT_ACCESS_SECRET"
   expect_not_contains "$OUT" "apps/api"
@@ -429,7 +449,7 @@ test_check_never_prints_values() {
 
 test_push_round_trips_special_characters() {
   local want='a"b\c: d #e$f'
-  printf "DATABASE_URL=x\nJWT_ACCESS_SECRET=jwt-secret-1\nAPI_PORT='%s'\n" "$want" >apps/api/.env
+  printf "DATABASE_URL=x\nJWT_ACCESS_SECRET=jwt-secret-1\nAPI_PORT='%s'\n" "$want" >apps/api/.env.local
   mise/tasks/local/env/push >/dev/null
   expect_eq "$(remote_value local /apps/api API_PORT)" "$want"
   : >"$INFISICAL_LOG"
@@ -437,7 +457,7 @@ test_push_round_trips_special_characters() {
 }
 
 test_push_shared_ref_label_needs_exact_reference() {
-  printf 'DATABASE_URL=x\nJWT_ACCESS_SECRET=jwt-secret-1\nAPI_PORT=${other.ref}\n' >apps/api/.env
+  printf 'DATABASE_URL=x\nJWT_ACCESS_SECRET=jwt-secret-1\nAPI_PORT=${other.ref}\n' >apps/api/.env.local
   local out
   out="$(mise/tasks/local/env/push --dry-run)"
   expect_contains "$out" "+ DATABASE_URL (shared ref)"
@@ -475,6 +495,12 @@ test_check_staging_reads_its_file() {
 
 # --- pull ---
 
+# Pull writes apps/<app>/.env; start it as a copy of the pushed .env.local.
+seed_dotenv() {
+  cp apps/api/.env.local apps/api/.env
+  cp apps/web/.env.local apps/web/.env
+}
+
 test_pull_skips_without_infisical_json() {
   rm .infisical.json
   expect_contains "$(mise/tasks/local/env/pull)" "skipping"
@@ -483,6 +509,7 @@ test_pull_skips_without_infisical_json() {
 
 test_pull_after_push_is_a_noop() {
   mise/tasks/local/env/push >/dev/null
+  seed_dotenv
   local before out
   before="$(cat apps/api/.env)"
   out="$(mise/tasks/local/env/pull)"
@@ -493,7 +520,6 @@ test_pull_after_push_is_a_noop() {
 
 test_pull_resolves_shared_refs_into_missing_file() {
   mise/tasks/local/env/push >/dev/null
-  mkdir -p "$SANDBOX/keep" && mv apps/web/.env "$SANDBOX/keep/"
   local out
   out="$(mise/tasks/local/env/pull --app web)"
   expect_contains "$out" "+ JWT_ACCESS_SECRET"
@@ -506,6 +532,7 @@ test_pull_resolves_shared_refs_into_missing_file() {
 
 test_pull_updates_values_and_keeps_other_lines() {
   mise/tasks/local/env/push >/dev/null
+  seed_dotenv
   state_set local /apps/api API_PORT 9000
   printf '# keep me\nLOCAL_ONLY=1\n' >>apps/api/.env
   local out
@@ -531,6 +558,7 @@ test_pull_reports_missing_and_extra_remote_keys() {
 
 test_pull_dry_run_writes_nothing() {
   mise/tasks/local/env/push >/dev/null
+  seed_dotenv
   state_set local /apps/api API_PORT 9000
   local before out
   before="$(cat apps/api/.env)"
@@ -540,14 +568,30 @@ test_pull_dry_run_writes_nothing() {
   expect_eq "$(cat apps/api/.env)" "$before"
 }
 
-test_pull_staging_writes_its_file() {
-  mise/tasks/local/env/push >/dev/null
+test_pull_staging_writes_dotenv() {
+  seed_dotenv
+  cp apps/web/.env.local apps/web/.env.staging
   state_set staging /apps/web AUTH_SECRET staging-auth
   jq '.folders.staging = ["/apps", "/apps/web"]' "$INFISICAL_STATE" >"$SANDBOX/s" && mv "$SANDBOX/s" "$INFISICAL_STATE"
-  mise/tasks/staging/env/pull --app web >/dev/null
+  local out
+  out="$(mise/tasks/staging/env/pull --app web)"
+  expect_contains "$out" "apps/web/.env"
+  expect_contains "$out" "~ AUTH_SECRET (value changed)"
   source tools/env/lib.sh
-  expect_eq "$(dotenv_get apps/web/.env.staging AUTH_SECRET)" "staging-auth"
+  expect_eq "$(dotenv_get apps/web/.env AUTH_SECRET)" "staging-auth"
+  expect_eq "$(dotenv_get apps/web/.env.staging AUTH_SECRET)" "auth-secret-1"
+}
+
+test_pull_rpi_writes_dotenv() {
+  cp apps/api/.env.local apps/api/.env.rpi
+  cp apps/web/.env.local apps/web/.env.rpi
+  mise/tasks/rpi/env/push >/dev/null
+  rm apps/api/.env.rpi apps/web/.env.rpi
+  mise/tasks/rpi/env/pull >/dev/null
+  source tools/env/lib.sh
+  expect_eq "$(dotenv_get apps/api/.env DATABASE_URL)" "postgres://db-secret-1/app"
   expect_eq "$(dotenv_get apps/web/.env AUTH_SECRET)" "auth-secret-1"
+  [ ! -e apps/api/.env.rpi ] || { echo "pull must not write .env.rpi"; return 1; }
 }
 
 test_pull_round_trips_special_characters() {
