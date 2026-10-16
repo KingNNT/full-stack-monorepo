@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Push apps/<app>/.env.rpi to Infisical env 'rpi' (/apps/<app>; @shared keys via /shared): [--app <name>] [--dry-run]"
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/tools/env/push" rpi "$@"

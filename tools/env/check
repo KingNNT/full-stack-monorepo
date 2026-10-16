@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compares each app's .env.example keys with its dotenv file (default) or
+# Compares each app's .env.example keys with apps/<app>/.env.<env> (default) or
 # Infisical (--remote): tools/env/check <env> [--remote] [--app <name>]
 # Run through `mise run <env>:env:check`. Reports missing/extra keys and,
 # remotely, @shared keys that are not references to /shared. Exits 1 on any

@@ -2,9 +2,9 @@
 # Pulls each app's secrets from Infisical into its dotenv file:
 # tools/env/pull <env> [--app <name>] [--dry-run]
 # Run through `mise run <env>:env:pull`. Only keys in .env.example are pulled,
-# from <env>:/apps/<app> with @shared references resolved, into apps/<app>/.env
-# (local) or apps/<app>/.env.<env>. Other lines are kept; a missing file starts
-# from .env.example. Values are never printed.
+# from <env>:/apps/<app> with @shared references resolved, always into
+# apps/<app>/.env. Other lines are kept; a missing file starts from
+# .env.example. Values are never printed.
 set -euo pipefail
 # shellcheck source=tools/env/lib.sh
 source "$(git rev-parse --show-toplevel)/tools/env/lib.sh"
@@ -76,7 +76,7 @@ writes=""  # "<app><TAB><changes json>" lines
 echo "Infisical env: $env"
 while IFS= read -r -u 3 app; do
   if [ -n "$only" ] && [ "$app" != "$only" ]; then continue; fi
-  rel="$(env_file "$env" "$app")"
+  rel="apps/$app/.env"
   keys="$(example_keys "$app" | cut -f1)"
   want="$(remote_object "$env" "/apps/$app" expand)"
   have='{}'
@@ -110,7 +110,7 @@ fi
 tmp=""
 trap 'rm -f "$tmp"' EXIT
 while IFS=$'\t' read -r -u 3 app changes; do
-  rel="$(env_file "$env" "$app")"
+  rel="apps/$app/.env"
   source_file="$ENV_ROOT/$rel"
   [ -f "$source_file" ] || source_file="$ENV_ROOT/apps/$app/.env.example"
   tmp="$(umask 077 && mktemp "$ENV_ROOT/apps/$app/.env.pull.XXXXXX")"

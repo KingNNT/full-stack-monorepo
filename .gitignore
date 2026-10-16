@@ -52,6 +52,7 @@ Thumbs.db
 .env.dev
 .env.staging
 .env.prod
+.env.rpi
 .env.pull.*
 .envrc.local
 

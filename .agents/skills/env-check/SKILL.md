@@ -1,6 +1,6 @@
 ---
 name: env-check
-description: Check that each app's env has exactly the keys its .env.example declares, with `mise run <env>:env:check` (<env> = local, dev, staging or prod; the env's local file by default) or `--remote` (the Infisical environment of the same name, including @shared references). Use when the user asks to check, verify, compare or audit env vars or secrets, find missing or extra keys, or after changing a .env.example. Only applies when .infisical.json exists at the repo root.
+description: Check that each app's env has exactly the keys its .env.example declares, with `mise run <env>:env:check` (<env> = local, rpi, dev, staging or prod; apps/<app>/.env.<env> by default) or `--remote` (the Infisical environment of the same name, including @shared references). Use when the user asks to check, verify, compare or audit env vars or secrets, find missing or extra keys, or after changing a .env.example. Only applies when .infisical.json exists at the repo root.
 ---
 
 # Check env keys
@@ -8,9 +8,9 @@ description: Check that each app's env has exactly the keys its .env.example dec
 **First:** if `.infisical.json` does not exist at the repo root, tell the
 user Infisical is not configured for this repo and stop.
 
-The task prefix is the environment: `local` checks `apps/<app>/.env`,
-`dev` / `staging` / `prod` check `apps/<app>/.env.<env>`; `--remote` checks
-the Infisical environment of the same name. Default to `local` when the user
+The task prefix is the environment: it checks `apps/<app>/.env.<env>` (the
+file push reads); `--remote` checks the Infisical environment of the same
+name. Default to `local` when the user
 names none.
 
 | Want | Run |
@@ -25,7 +25,7 @@ report names keys only, never values.
 
 | Line | Meaning | Fix |
 |---|---|---|
-| `missing: A, B` | in `.env.example`, not in the source | local: the user adds them to the file (or pulls them, env-pull skill); remote: push (env-push skill) |
+| `missing: A, B` | in `.env.example`, not in the source | local: the user adds them to the file; remote: push (env-push skill) |
 | `extra: C` | in the source, not in `.env.example` | add it to `.env.example` if it is real, otherwise the **user** removes it from the file (remote: in the Infisical UI) |
 | `not a shared ref: K` | a `@shared` key in `/apps/<app>` holds a value instead of `${<env>.shared.K}` | push rewrites it |
 | `shared missing: K` | `/shared` has no `K` | push |

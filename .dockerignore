@@ -8,6 +8,7 @@
 **/.env.dev
 **/.env.staging
 **/.env.prod
+**/.env.rpi
 **/coverage
 **/.nx
 **/.pnpm-store

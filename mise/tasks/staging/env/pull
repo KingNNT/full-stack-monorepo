@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-#MISE description="Pull Infisical env 'staging' (/apps/<app>, references resolved) into apps/<app>/.env.staging: [--app <name>] [--dry-run]"
+#MISE description="Pull Infisical env 'staging' (/apps/<app>, references resolved) into apps/<app>/.env: [--app <name>] [--dry-run]"
 set -euo pipefail
 exec "$(git rev-parse --show-toplevel)/tools/env/pull" staging "$@"

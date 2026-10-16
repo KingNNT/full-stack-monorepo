@@ -125,13 +125,14 @@ container. Key variables:
 
 **Infisical (optional).** When `.infisical.json` exists at the repo root,
 the `<env>:env:*` tasks sync env vars with the Infisical environment of the
-same name, for `<env>` in `local`, `dev`, `staging`, `prod`. The local file is
-`apps/<app>/.env` for `local` and `apps/<app>/.env.<env>` otherwise (all
-git-ignored). `mise run <env>:env:push [--dry-run]` pushes those files to
-Infisical under `/apps/<app>`; keys marked `# @shared` on their
+same name, for `<env>` in `local`, `rpi`, `dev`, `staging`, `prod`.
+`mise run <env>:env:push [--dry-run]` pushes `apps/<app>/.env.<env>`
+(git-ignored) to Infisical under `/apps/<app>` and refuses any other
+`.env.<suffix>` besides `.env.example`/`.env.test`; keys marked `# @shared` on their
 `.env.example` line are stored once in `/shared` and referenced from the apps
-(`${<env>.shared.KEY}`). `mise run <env>:env:pull [--dry-run]` writes them
-back, references resolved. `mise run <env>:env:check [--remote]` compares each
-`.env.example` with the file or Infisical. Agents follow the `env-push`,
+(`${<env>.shared.KEY}`). `mise run <env>:env:pull [--dry-run]` always writes
+`apps/<app>/.env`, references resolved — the apps only load `.env`.
+`mise run <env>:env:check [--remote]` compares each `.env.example` with
+`.env.<env>` or Infisical. Agents follow the `env-push`,
 `env-pull` and `env-check` skills (`.agents/skills/`). Without
 `.infisical.json` these tasks do nothing.
