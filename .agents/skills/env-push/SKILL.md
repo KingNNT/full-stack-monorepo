@@ -71,7 +71,9 @@ Diff lines: `+ KEY` new (`+ KEY (shared ref)` for a @shared key), `~ KEY (value 
 |---|---|
 | `Infisical is not configured` | No `.infisical.json`; nothing to do. |
 | `infisical CLI not found` | Ask the user to install the Infisical CLI. |
-| `run: infisical login` | Ask the user to run `infisical login` (or set `INFISICAL_TOKEN`) and check that the Infisical environment exists. |
+| `no Infisical credentials in the environment and no host login` | Ask the user to set `INFISICAL_TOKEN`, or `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`, in the shell or `mise.local.toml` `[env]`, or to run `infisical login`. Never set or read them yourself. |
+| `no Infisical project` | Ask the user to set `INFISICAL_PROJECT_ID` or `workspaceId` in `.infisical.json`. |
+| `infisical … failed` | Rejected credentials or a missing Infisical environment; ask the user to check both. |
 | `apps/<app>/.env.<env> not found` | The user creates it from `.env.example`. |
 | `not supported: apps/<app>/.env.<x>, …` | The user renames the file to a supported `.env.<env>` or removes it. |
 | `@shared KEY differs between …` | The user makes the value equal in every app's file. |

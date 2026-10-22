@@ -46,6 +46,8 @@ Diff lines: `+ KEY` (not in the file yet), `~ KEY (value changed)`. Notes:
 |---|---|
 | `Infisical is not configured` | No `.infisical.json`; nothing to do. |
 | `infisical CLI not found` | Ask the user to install the Infisical CLI. |
-| `run: infisical login` | Ask the user to run `infisical login` (or set `INFISICAL_TOKEN`) and check that the Infisical environment exists. |
+| `no Infisical credentials in the environment and no host login` | Ask the user to set `INFISICAL_TOKEN`, or `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`, in the shell or `mise.local.toml` `[env]`, or to run `infisical login`. Never set or read them yourself. |
+| `no Infisical project` | Ask the user to set `INFISICAL_PROJECT_ID` or `workspaceId` in `.infisical.json`. |
+| `infisical … failed` | Rejected credentials or a missing Infisical environment; ask the user to check both. |
 | `cannot write KEY: …` | The value has a newline or both quote types; the user sets that key by hand. |
 | `KEY has a multi-line … quoted value` | The existing file has a multi-line value; the user fixes that line. |

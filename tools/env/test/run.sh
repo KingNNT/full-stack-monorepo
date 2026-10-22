@@ -17,7 +17,8 @@ setup() {
   export PATH="$SANDBOX/bin:$PATH"
   export INFISICAL_LOG="$SANDBOX/infisical.log" INFISICAL_STATE="$SANDBOX/state.json"
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
-  unset FAKE_INFISICAL_FAIL
+  unset FAKE_INFISICAL_FAIL FAKE_INFISICAL_SESSION INFISICAL_UNIVERSAL_AUTH_CLIENT_ID INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET INFISICAL_PROJECT_ID
+  export INFISICAL_TOKEN=env-token
   : >"$INFISICAL_LOG"
   echo '{"folders": {}, "secrets": {}}' >"$INFISICAL_STATE"
 
@@ -358,9 +359,62 @@ test_push_reports_extra_empty_and_missing_keys() {
   expect_contains "$out" "missing in .env.local, not pushed: JWT_ACCESS_SECRET"
 }
 
-test_push_explains_login_on_auth_failure() {
+test_push_explains_credentials_on_auth_failure() {
   export FAKE_INFISICAL_FAIL=1
-  expect_fail "infisical login" mise/tasks/local/env/push
+  expect_fail "INFISICAL_TOKEN" mise/tasks/local/env/push
+}
+
+test_push_uses_token_and_project_from_env() {
+  mise/tasks/local/env/push >/dev/null
+  expect_call "token=env-token"
+  expect_call "--projectId test"
+  export INFISICAL_PROJECT_ID=other
+  : >"$INFISICAL_LOG"
+  mise/tasks/local/env/push >/dev/null
+  expect_call "--projectId other"
+  expect_no_call "--projectId test"
+}
+
+test_push_logs_in_with_universal_auth_from_env() {
+  unset INFISICAL_TOKEN
+  export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=id INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=secret
+  mise/tasks/local/env/push >/dev/null
+  expect_call "login --method=universal-auth --plain --silent"
+  expect_call "token=ua-token"
+  expect_no_call "token=env-token"
+}
+
+test_push_env_token_takes_precedence_over_host_login() {
+  export FAKE_INFISICAL_SESSION=1
+  mise/tasks/local/env/push >/dev/null
+  expect_call "token=env-token"
+  expect_no_call "token=session"
+  expect_no_call "login status"
+}
+
+test_push_falls_back_to_host_login() {
+  unset INFISICAL_TOKEN
+  export FAKE_INFISICAL_SESSION=1
+  mise/tasks/local/env/push >/dev/null
+  expect_call "login status --json --silent"
+  expect_call "token=session"
+}
+
+test_push_fails_without_env_credentials_or_host_login() {
+  unset INFISICAL_TOKEN
+  expect_fail "no Infisical credentials in the environment and no host login" mise/tasks/local/env/push
+  expect_no_call "secrets"
+}
+
+test_push_rejects_half_universal_auth() {
+  unset INFISICAL_TOKEN
+  export FAKE_INFISICAL_SESSION=1 INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=id
+  expect_fail "set both INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" mise/tasks/local/env/push
+}
+
+test_push_fails_without_project() {
+  echo '{}' >.infisical.json
+  expect_fail "no Infisical project" mise/tasks/local/env/push
 }
 
 test_push_never_prints_values() {
@@ -432,9 +486,19 @@ test_check_reports_inconsistent_markers() {
   expect_contains "$OUT" "JWT_ACCESS_SECRET is @shared in apps/api but not in apps/web"
 }
 
-test_check_remote_explains_login_on_auth_failure() {
+test_check_remote_explains_credentials_on_auth_failure() {
   export FAKE_INFISICAL_FAIL=1
-  expect_fail "infisical login" mise/tasks/local/env/check --remote
+  expect_fail "INFISICAL_TOKEN" mise/tasks/local/env/check --remote
+}
+
+test_check_local_needs_no_credentials() {
+  unset INFISICAL_TOKEN
+  mise/tasks/local/env/check >/dev/null
+}
+
+test_pull_fails_without_env_credentials_or_host_login() {
+  unset INFISICAL_TOKEN
+  expect_fail "no host login" mise/tasks/local/env/pull
 }
 
 test_check_never_prints_values() {
