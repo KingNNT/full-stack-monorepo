@@ -4,19 +4,47 @@
 #   {"folders": {"<env>": ["/apps", "/apps/api"]},
 #    "secrets": {"<env>": {"<path>": {"KEY": "value"}}}}
 # Implements only the calls tools/env/lib.sh makes and logs argv to
-# $INFISICAL_LOG. FAKE_INFISICAL_FAIL=1 makes every call fail like an
-# expired login.
+# $INFISICAL_LOG. Calls need INFISICAL_TOKEN or, with FAKE_INFISICAL_SESSION=1,
+# a host login session. FAKE_INFISICAL_FAIL=1 makes every call fail like
+# rejected credentials.
 set -euo pipefail
 printf '%s\n' "$*" >>"$INFISICAL_LOG"
 if [ "${FAKE_INFISICAL_FAIL:-0}" = 1 ]; then
-  echo "error: unauthorized, please log in" >&2
+  echo "error: unauthorized" >&2
   exit 1
 fi
 
-cmd="" env=dev path=/ name="" file="" expand=true
+if [ "$*" = "login status --json --silent" ]; then
+  if [ "${FAKE_INFISICAL_SESSION:-0}" = 1 ]; then
+    echo '{"sessions": [{"principalType": "user", "status": "authenticated"}]}'
+  else
+    echo '{"sessions": []}'
+    exit 1
+  fi
+  exit 0
+fi
+if [ "${1:-}" = login ]; then
+  if [ "$*" != "login --method=universal-auth --plain --silent" ] \
+    || [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:-}" ] || [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:-}" ]; then
+    echo "fake infisical: unsupported login: $*" >&2
+    exit 2
+  fi
+  echo "ua-token"
+  exit 0
+fi
+if [ -n "${INFISICAL_TOKEN:-}" ]; then
+  printf 'token=%s\n' "$INFISICAL_TOKEN" >>"$INFISICAL_LOG"
+elif [ "${FAKE_INFISICAL_SESSION:-0}" = 1 ]; then
+  echo "token=session" >>"$INFISICAL_LOG"
+else
+  echo "error: not logged in" >&2
+  exit 1
+fi
+
+cmd="" env=dev path=/ name="" file="" expand=true project=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --env | --path | --name | --file | --format | -o)
+    --env | --path | --name | --file | --format | --projectId | -o)
       opt="$1" val="$2"
       shift 2
       ;;
@@ -40,8 +68,14 @@ while [ $# -gt 0 ]; do
     --name) name="$val" ;;
     --file) file="$val" ;;
     --expand) expand="$val" ;;
+    --projectId) project="$val" ;;
   esac
 done
+
+if [ -z "$project" ]; then
+  echo "error: --projectId is required with a machine identity token" >&2
+  exit 1
+fi
 
 state() { jq -c "$@" "$INFISICAL_STATE"; }
 

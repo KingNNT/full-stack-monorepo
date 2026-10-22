@@ -25,6 +25,38 @@ require_infisical_config() {
 require_infisical_cli() {
   command -v infisical >/dev/null 2>&1 \
     || die "infisical CLI not found; install it: https://infisical.com/docs/cli/overview"
+  require_infisical_auth
+}
+
+AUTH_HINT="set INFISICAL_TOKEN, or INFISICAL_UNIVERSAL_AUTH_CLIENT_ID and INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET, in the shell or in mise.local.toml [env]; or run: infisical login"
+
+# Picks credentials from the environment first (the shell or mise.local.toml):
+# INFISICAL_TOKEN as is, or a universal-auth machine identity exchanged here
+# for one. Without either, falls back to the host `infisical login` session.
+# Sets INFISICAL_PROJECT_ID, defaulting to the workspaceId of .infisical.json.
+require_infisical_auth() {
+  local err
+  if [ -n "${INFISICAL_TOKEN:-}" ]; then
+    :
+  elif [ -n "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:-}" ] || [ -n "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:-}" ]; then
+    if [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:-}" ] || [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:-}" ]; then
+      die "set both INFISICAL_UNIVERSAL_AUTH_CLIENT_ID and INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET, or neither"
+    fi
+    err="$(mktemp)"
+    if ! INFISICAL_TOKEN="$(infisical login --method=universal-auth --plain --silent 2>"$err")" \
+      || [ -z "$INFISICAL_TOKEN" ]; then
+      cat "$err" >&2
+      rm -f "$err"
+      die "infisical universal-auth login failed; check INFISICAL_UNIVERSAL_AUTH_CLIENT_ID and INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"
+    fi
+    rm -f "$err"
+    export INFISICAL_TOKEN
+  elif ! infisical login status --json --silent 2>/dev/null \
+    | jq -e 'any(.sessions[]?; .status == "authenticated")' >/dev/null 2>&1; then
+    die "no Infisical credentials in the environment and no host login; $AUTH_HINT"
+  fi
+  INFISICAL_PROJECT_ID="${INFISICAL_PROJECT_ID:-$(jq -r '.workspaceId // empty' "$ENV_ROOT/.infisical.json")}"
+  [ -n "$INFISICAL_PROJECT_ID" ] || die "no Infisical project; set INFISICAL_PROJECT_ID or workspaceId in .infisical.json"
 }
 
 require_env() { # <env>
@@ -171,14 +203,15 @@ shared_ref() { # <env> <key>
   printf '${%s.shared.%s}' "$1" "$2"
 }
 
-# Runs the infisical CLI (stdout only); on failure shows its error and how to log in.
+# Runs the infisical CLI on INFISICAL_PROJECT_ID (stdout only); on failure
+# shows its error and what to check.
 infisical_run() {
   local out err
   err="$(mktemp)"
-  if ! out="$(infisical "$@" 2>"$err")"; then
+  if ! out="$(infisical "$@" --projectId "$INFISICAL_PROJECT_ID" 2>"$err")"; then
     cat "$err" >&2
     rm -f "$err"
-    die "infisical $1 $2 failed; check that the Infisical environment exists and run: infisical login (or set INFISICAL_TOKEN)"
+    die "infisical $1 $2 failed; check that the Infisical environment exists and the credentials can access it ($AUTH_HINT)"
   fi
   rm -f "$err"
   printf '%s\n' "$out"

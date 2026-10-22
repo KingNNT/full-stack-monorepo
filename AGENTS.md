@@ -133,6 +133,13 @@ same name, for `<env>` in `local`, `rpi`, `dev`, `staging`, `prod`.
 (`${<env>.shared.KEY}`). `mise run <env>:env:pull [--dry-run]` always writes
 `apps/<app>/.env`, references resolved — the apps only load `.env`.
 `mise run <env>:env:check [--remote]` compares each `.env.example` with
-`.env.<env>` or Infisical. Agents follow the `env-push`,
+`.env.<env>` or Infisical. The tasks authenticate from environment variables
+first — exported in the shell or set under `[env]` in the git-ignored
+`mise.local.toml`: `INFISICAL_TOKEN`, or a universal-auth machine identity
+(`INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` + `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`).
+Without them they use the host `infisical login` session, and fail when there
+is none. `INFISICAL_PROJECT_ID` overrides the `workspaceId` of
+`.infisical.json`; `INFISICAL_DOMAIN` points at a self-hosted or EU instance.
+Agents follow the `env-push`,
 `env-pull` and `env-check` skills (`.agents/skills/`). Without
 `.infisical.json` these tasks do nothing.
