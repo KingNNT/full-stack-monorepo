@@ -52,8 +52,10 @@ DATABASE_URL=postgres://localhost/app   # @shared
    covers that one run.
 5. `mise run <env>:env:check --remote` to confirm.
 
-Diff lines: `+ KEY` new (`+ KEY (shared ref)` for a @shared key), `~ KEY (value changed)`, `! KEY (only on remote, kept)`
-— push never deletes. Notes: `extra (not pushed)`, `empty, not pushed`,
+Diff lines: `+ KEY` new (`+ KEY (shared ref)` for a @shared key, `+ KEY (empty)`
+for an empty value, stored as `__EMPTY__` because Infisical cannot hold an
+empty string), `~ KEY (value changed)`, `! KEY (only on remote, kept)`
+— push never deletes. Notes: `extra (not pushed)`,
 `missing in <file>, not pushed`.
 
 ## Never
@@ -70,7 +72,7 @@ Diff lines: `+ KEY` new (`+ KEY (shared ref)` for a @shared key), `~ KEY (value 
 | Message | Fix |
 |---|---|
 | `Infisical is not configured` | No `.infisical.json`; nothing to do. |
-| `infisical CLI not found` | Ask the user to install the Infisical CLI. |
+| `mise not found` / `the infisical CLI pinned in mise.toml is not installed` | The CLI is pinned in `mise.toml`; ask the user to run `mise install`. |
 | `no Infisical credentials in the environment and no host login` | Ask the user to set `INFISICAL_TOKEN`, or `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`, in the shell or `mise.local.toml` `[env]`, or to run `infisical login`. Never set or read them yourself. |
 | `no Infisical project` | Ask the user to set `INFISICAL_PROJECT_ID` or `workspaceId` in `.infisical.json`. |
 | `infisical … failed` | Rejected credentials or a missing Infisical environment; ask the user to check both. |

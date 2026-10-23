@@ -1,6 +1,8 @@
 [tools]
 node = "lts"
 pnpm = "11"
+# Pinned: tools/env/* run it through `mise exec`, never from PATH.
+infisical = "0.43.121"
 
 [env]
 HOST_MACHINE_POSTGRES_PORT=5432

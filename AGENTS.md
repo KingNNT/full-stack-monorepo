@@ -130,8 +130,19 @@ same name, for `<env>` in `local`, `rpi`, `dev`, `staging`, `prod`.
 (git-ignored) to Infisical under `/apps/<app>` and refuses any other
 `.env.<suffix>` besides `.env.example`/`.env.test`; keys marked `# @shared` on their
 `.env.example` line are stored once in `/shared` and referenced from the apps
-(`${<env>.shared.KEY}`). `mise run <env>:env:pull [--dry-run]` always writes
-`apps/<app>/.env`, references resolved — the apps only load `.env`.
+(`${<env>.shared.KEY}`); an empty value is stored as `__EMPTY__`, since
+Infisical cannot hold an empty string. `mise run <env>:env:pull [--dry-run]`
+always writes `apps/<app>/.env`, references resolved and `__EMPTY__` written
+back as `KEY=` — the apps only load `.env`. It never runs `export
+--expand=true` over a whole folder (that expands `$` in any value like a shell
+and silently alters a password containing one): values come from the raw
+export and only a value that is entirely a reference is resolved. A key
+missing on Infisical or an unresolvable reference fails the pull before any
+file is written. Pull stamps each file's first line `# infisical-env=<env>`,
+and `mise run local:docker:up` pulls `local` and refuses to start on a file
+stamped with another environment (`SKIP_ENV_PULL=1` skips the pull offline,
+not the check). The `infisical` CLI is pinned in `mise.toml` and always run
+through `mise exec`, so it needs no separate install.
 `mise run <env>:env:check [--remote]` compares each `.env.example` with
 `.env.<env>` or Infisical. The tasks authenticate from environment variables
 first — exported in the shell or set under `[env]` in the git-ignored

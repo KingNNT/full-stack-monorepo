@@ -3,7 +3,8 @@
 # Run through `mise run <env>:env:push`. Keys come from each app's
 # .env.example, values from apps/<app>/.env.<env>; any other .env.<suffix> is
 # rejected. @shared keys go to /shared and are referenced from /apps/<app>.
-# Remote-only keys are kept. Values are never printed.
+# An empty value is stored as EMPTY_SENTINEL, since Infisical cannot hold an
+# empty string. Remote-only keys are kept. Values are never printed.
 set -euo pipefail
 # shellcheck source=tools/env/lib.sh
 source "$(git rev-parse --show-toplevel)/tools/env/lib.sh"
@@ -74,8 +75,7 @@ while IFS= read -r -u 3 app; do
       exit "$rc"
     fi
     if [ -z "$value" ]; then
-      if [ "$selected" = 1 ]; then note "$folder" "empty, not pushed: $key"; fi
-      continue
+      value="$EMPTY_SENTINEL"
     fi
     if [ "$kind" = shared ]; then
       first="$(K="$key" jq -r '.[env.K].app // empty' <<<"$shared")"
@@ -109,7 +109,8 @@ fi
 diff_program='(env.WANT | fromjson) as $w | (env.HAVE | fromjson) as $h
   | ( ($w | keys[]) as $k
       | if (($h | has($k)) | not) then
-          "+ \($k)\(if ($w[$k] == "${\(env.ENVSLUG).shared.\($k)}") then " (shared ref)" else "" end)"
+          "+ \($k)\(if ($w[$k] == "${\(env.ENVSLUG).shared.\($k)}") then " (shared ref)"
+            elif $w[$k] == env.EMPTY then " (empty)" else "" end)"
         elif $h[$k] != $w[$k] then "~ \($k) (value changed)"
         else empty end ),
     ( ($h | keys[]) as $k | select(($w | has($k)) | not) | "! \($k) (only on remote, kept)" )'
@@ -125,7 +126,7 @@ echo "Infisical env: $env"
 for folder in $(jq -r 'keys | map(select(. == "/shared")) + map(select(. != "/shared")) | .[]' <<<"$desired"); do
   want="$(F="$folder" jq -c '.[env.F]' <<<"$desired")"
   have="$(remote_object "$env" "$folder")"
-  lines="$(ENVSLUG="$env" WANT="$want" HAVE="$have" jq -nr "$diff_program")"
+  lines="$(ENVSLUG="$env" EMPTY="$EMPTY_SENTINEL" WANT="$want" HAVE="$have" jq -nr "$diff_program")"
   echo "$folder"
   # shellcheck disable=SC2001 # indenting every line of a multi-line string
   if [ -n "$lines" ]; then sed 's/^/  /' <<<"$lines"; else echo "  no changes"; fi

@@ -107,11 +107,15 @@ case "$cmd" in
     ;;
   " export")
     require_folder
-    # With --expand, resolves ${<env>.shared.<KEY>} references (the only kind the tasks write).
+    # With --expand, resolves ${<env>.shared.<KEY>} references, leaves an
+    # unresolvable one as written, and — like the real CLI — treats any other
+    # $NAME in a value as shell expansion of an unset variable.
     state --arg e "$env" --arg p "$path" --arg x "$expand" '. as $root
       | (.secrets[$e][$p] // {}) | to_entries | map({key, value})
       | if $x == "true" then
-          map(.value |= gsub("\\$\\{(?<e>[^.}]+)\\.shared\\.(?<k>[^}]+)\\}"; $root.secrets[.e]["/shared"][.k] // ""))
+          map(.value |= (gsub("\\$(?<n>[A-Za-z_][A-Za-z0-9_]*)"; "")
+            | gsub("\\$\\{(?<e>[^.}]+)\\.shared\\.(?<k>[^}]+)\\}";
+                $root.secrets[.e]["/shared"][.k] // "${\(.e).shared.\(.k)}")))
         else . end'
     ;;
   " secrets set")

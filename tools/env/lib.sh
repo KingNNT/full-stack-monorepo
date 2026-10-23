@@ -8,6 +8,12 @@ KEY_RE='^([A-Za-z_][A-Za-z0-9_]*)=(.*)$'
 # Task environments; each is also the Infisical environment slug.
 ENVS="local rpi dev staging prod"
 SHARED_RE='#.*@shared'
+# Infisical refuses to store an empty value, so an empty one is stored as
+# this sentinel: push writes it, pull turns it back into KEY=.
+EMPTY_SENTINEL='__EMPTY__'
+# First line pull writes into apps/<app>/.env, naming the environment it came
+# from; assert_stamps refuses to start a stack on another environment's file.
+STAMP_PREFIX='# infisical-env='
 
 die() {
   echo "error: $*" >&2
@@ -22,9 +28,24 @@ require_infisical_config() {
   fi
 }
 
+# Every call goes through the CLI version pinned in mise.toml, so cron, CI and
+# non-interactive shells run the same binary as a dev shell — and none of them
+# depends on `infisical` being on PATH. INFISICAL_BIN replaces it in tests.
+infisical_cli() {
+  if [ -n "${INFISICAL_BIN:-}" ]; then
+    "$INFISICAL_BIN" "$@"
+  else
+    mise exec -- infisical "$@"
+  fi
+}
+
 require_infisical_cli() {
-  command -v infisical >/dev/null 2>&1 \
-    || die "infisical CLI not found; install it: https://infisical.com/docs/cli/overview"
+  if [ -z "${INFISICAL_BIN:-}" ]; then
+    command -v mise >/dev/null 2>&1 \
+      || die "mise not found; the infisical CLI is pinned in mise.toml: https://mise.jdx.dev"
+    infisical_cli --version >/dev/null 2>&1 \
+      || die "the infisical CLI pinned in mise.toml is not installed; run: mise install"
+  fi
   require_infisical_auth
 }
 
@@ -43,7 +64,7 @@ require_infisical_auth() {
       die "set both INFISICAL_UNIVERSAL_AUTH_CLIENT_ID and INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET, or neither"
     fi
     err="$(mktemp)"
-    if ! INFISICAL_TOKEN="$(infisical login --method=universal-auth --plain --silent 2>"$err")" \
+    if ! INFISICAL_TOKEN="$(infisical_cli login --method=universal-auth --plain --silent 2>"$err")" \
       || [ -z "$INFISICAL_TOKEN" ]; then
       cat "$err" >&2
       rm -f "$err"
@@ -51,7 +72,7 @@ require_infisical_auth() {
     fi
     rm -f "$err"
     export INFISICAL_TOKEN
-  elif ! infisical login status --json --silent 2>/dev/null \
+  elif ! infisical_cli login status --json --silent 2>/dev/null \
     | jq -e 'any(.sessions[]?; .status == "authenticated")' >/dev/null 2>&1; then
     die "no Infisical credentials in the environment and no host login; $AUTH_HINT"
   fi
@@ -208,7 +229,7 @@ shared_ref() { # <env> <key>
 infisical_run() {
   local out err
   err="$(mktemp)"
-  if ! out="$(infisical "$@" --projectId "$INFISICAL_PROJECT_ID" 2>"$err")"; then
+  if ! out="$(infisical_cli "$@" --projectId "$INFISICAL_PROJECT_ID" 2>"$err")"; then
     cat "$err" >&2
     rm -f "$err"
     die "infisical $1 $2 failed; check that the Infisical environment exists and the credentials can access it ($AUTH_HINT)"
@@ -246,15 +267,77 @@ folder_exists() { walk_folders "$1" "$2"; }
 
 ensure_folder() { walk_folders "$1" "$2" create; }
 
-# Secrets of <env>:<path> as {"KEY": "value"}, with references unexpanded
-# unless `expand` is given; {} when the folder does not exist.
-remote_object() { # <env> <path> [expand]
-  local out expand=false
-  if [ "${3:-}" = expand ]; then expand=true; fi
+# Secrets of <env>:<path> as {"KEY": "value"}, exactly as stored (references
+# unexpanded, EMPTY_SENTINEL kept); {} when the folder does not exist.
+remote_object() { # <env> <path>
+  local out
   if ! folder_exists "$1" "$2"; then
     echo '{}'
     return 0
   fi
-  out="$(infisical_run export --format=json --env "$1" --path "$2" --expand="$expand" --include-imports=false --secret-overriding=false --silent)" || exit 1
+  out="$(infisical_run export --format=json --env "$1" --path "$2" --expand=false --include-imports=false --secret-overriding=false --silent)" || exit 1
   jq -c 'map({key: (.key // .secretKey), value: (.value // .secretValue)}) | from_entries' <<<"$out"
+}
+
+# jq: true for a value that is, in its entirety, one Infisical reference.
+# shellcheck disable=SC2016 # a jq program, not shell
+REF_DEF='def is_ref: type == "string" and test("^\\$\\{[^}]+\\}$");'
+
+# Secrets of <env>:<path> as an app should receive them: references resolved
+# and EMPTY_SENTINEL turned back into "". Dies naming any key whose reference
+# cannot be resolved, rather than handing an app a literal ${...}.
+#
+# `export --expand=true` is not used for the whole folder: it treats `$` in
+# any value as shell expansion, so a generated password containing `$` would
+# come back altered with nothing failing. So the raw export is the source of
+# every value, and only values that are entirely a reference are replaced:
+# ${<env>.shared.<KEY>} (the only kind push writes) straight from /shared, and
+# any other reference from an expanded export.
+resolved_object() { # <env> <path>
+  local env="$1" raw shared out bad
+  raw="$(remote_object "$env" "$2")" || exit 1
+  if R="$raw" jq -en "$REF_DEF"' env.R | fromjson | any(.[]; is_ref)' >/dev/null; then
+    shared="$(remote_object "$env" /shared)" || exit 1
+    # shellcheck disable=SC2016 # a jq program, not shell
+    raw="$(R="$raw" S="$shared" E="$env" jq -nc "$REF_DEF"' (env.S | fromjson) as $s
+      | env.R | fromjson | map_values(
+          ((select(is_ref) | capture("^\\$\\{(?<e>[^.}]+)\\.shared\\.(?<k>[^}]+)\\}$")) // null) as $m
+          | if $m == null then .
+            elif $m.e == env.E and ($s | has($m.k)) then $s[$m.k]
+            else . end)')" || exit 1
+  fi
+  if R="$raw" jq -en "$REF_DEF"' env.R | fromjson | any(.[]; is_ref)' >/dev/null; then
+    out="$(infisical_run export --format=json --env "$env" --path "$2" --expand=true --include-imports=false --secret-overriding=false --silent)" || exit 1
+    # shellcheck disable=SC2016 # a jq program, not shell
+    raw="$(R="$raw" X="$out" jq -nc "$REF_DEF"' (env.X | fromjson
+        | map({key: (.key // .secretKey), value: (.value // .secretValue)}) | from_entries) as $x
+      | env.R | fromjson | with_entries(.key as $k
+          | if (.value | is_ref) and ($x | has($k)) then .value = $x[$k] else . end)')" || exit 1
+  fi
+  bad="$(R="$raw" jq -nr "$REF_DEF"' env.R | fromjson | to_entries | map(select(.value | is_ref) | .key) | join(", ")')" || exit 1
+  [ -z "$bad" ] || die "$env:$2 has references that cannot be resolved: $bad; check the referenced secrets exist and the credentials can read them"
+  R="$raw" Z="$EMPTY_SENTINEL" jq -nc 'env.R | fromjson | map_values(if . == env.Z then "" else . end)'
+}
+
+# The environment named by a dotenv file's stamp line, or nothing.
+stamp_of() { # <file>
+  [ -f "$1" ] || return 0
+  sed -n "s/^${STAMP_PREFIX}//p" "$1" | head -1
+}
+
+# Dies unless every app's .env was pulled from <env>.
+assert_stamps() { # <env>
+  local app rel got bad=""
+  while IFS= read -r app; do
+    rel="apps/$app/.env"
+    got="$(stamp_of "$ENV_ROOT/$rel")"
+    if [ ! -f "$ENV_ROOT/$rel" ]; then
+      bad+="$rel is missing"$'\n'
+    elif [ -z "$got" ]; then
+      bad+="$rel has no ${STAMP_PREFIX}<env> line (not pulled)"$'\n'
+    elif [ "$got" != "$1" ]; then
+      bad+="$rel was pulled from '$got'"$'\n'
+    fi
+  done < <(list_apps)
+  [ -z "$bad" ] || die "env files are not from '$1': $(join_lines "$bad"); run: mise run $1:env:pull"
 }
