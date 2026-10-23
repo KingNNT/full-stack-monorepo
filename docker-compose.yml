@@ -24,7 +24,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-fullstack_monorepo_dev}
       # Inside the network the api always listens on 8000; the host port is
-      # HOST_MACHINE_API_PORT from the shell (see the override file).
+      # HOST_MACHINE_API_PORT (see .docker/compose/ports/api.yml).
       API_PORT: 8000
       # No collector runs in this stack; export OTEL_SDK_DISABLED=false and
       # point OTEL_EXPORTER_OTLP_ENDPOINT at one to send telemetry.

@@ -70,7 +70,8 @@ mise run flow:back-merge             # merge the back-merge PRs
 
 The apps run only in Docker — there is no host `pnpm dev`. `local:db:*` tasks
 run inside the `api` container; Mailpit SMTP is reachable only on the compose
-network. Published ports (loopback only, override from the shell): web 3000
+network. Published ports (loopback only; `mise.toml` sets them, `false` in
+`mise.local.toml` leaves one unpublished — see `mise.local.toml.example`): web 3000
 (`HOST_MACHINE_WEB_PORT`), api 8000 (`HOST_MACHINE_API_PORT`), Postgres 5432
 for GUI clients (`HOST_MACHINE_POSTGRES_PORT`), Mailpit UI 8025
 (`HOST_MACHINE_MAILPIT_PORT`), Drizzle Studio 4983

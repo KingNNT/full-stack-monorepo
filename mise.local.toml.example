@@ -1,0 +1,12 @@
+# Copy to mise.local.toml (git-ignored) for personal overrides.
+
+[env]
+# Host ports published by `mise run local:docker:up`. mise.toml sets every
+# HOST_MACHINE_<SERVICE>_PORT to the service's default port; `false` unsets
+# it, so that service is not published to the host. Set a number instead to
+# publish it on another port.
+HOST_MACHINE_POSTGRES_PORT = false
+HOST_MACHINE_API_PORT = false
+HOST_MACHINE_WEB_PORT = false
+HOST_MACHINE_MAILPIT_PORT = false
+HOST_MACHINE_DRIZZLE_STUDIO_PORT = false

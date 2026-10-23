@@ -1,0 +1,4 @@
+services:
+  api:
+    ports:
+      - "127.0.0.1:${HOST_MACHINE_DRIZZLE_STUDIO_PORT}:4983"

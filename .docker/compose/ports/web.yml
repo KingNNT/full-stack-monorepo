@@ -1,0 +1,4 @@
+services:
+  web:
+    ports:
+      - "127.0.0.1:${HOST_MACHINE_WEB_PORT}:3000"

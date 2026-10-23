@@ -251,7 +251,7 @@ modules/{domain}/
 
 ### Host ports (Docker Compose)
 
-Compose publishes these on `127.0.0.1` only; export one in your shell (or set it in `mise.local.toml` `[env]`) to change the host side.
+`mise run local:docker:up` publishes a service on `127.0.0.1` only while its variable is set: `mise.toml` sets each one to the default below. Override or unset (`= false`) them in `mise.local.toml` `[env]` — copy `mise.local.toml.example`, which unsets them all. Each port is its own file under `.docker/compose/ports/`; plain `docker compose up` publishes none.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -261,7 +261,7 @@ Compose publishes these on `127.0.0.1` only; export one in your shell (or set it
 | `HOST_MACHINE_MAILPIT_PORT` | Mailpit UI | `8025` |
 | `HOST_MACHINE_DRIZZLE_STUDIO_PORT` | Drizzle Studio | `4983` |
 
-Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell. The same goes for the host ports above; inside the containers the api always listens on 8000 and the web on 3000. The dev containers run as your host user (`HOST_UID`/`HOST_GID`, exported by `mise run local:docker:up*`; plain `docker compose` falls back to 1000) so files they write into the checkout are not owned by root on Linux.
+Defaults are what the code falls back to when a variable is unset; `apps/api/.env.example` and `apps/web/.env.example` set working local values for their app. The PostgreSQL variables have no env file — Docker Compose uses the defaults above unless you export them in your shell. Inside the containers the api always listens on 8000 and the web on 3000. The dev containers run as your host user (`HOST_UID`/`HOST_GID`, exported by `mise run local:docker:up*`; plain `docker compose` falls back to 1000) so files they write into the checkout are not owned by root on Linux.
 
 **Setup:** each app loads its own `.env` from its directory (Nest `ConfigModule`, Next.js, drizzle-kit and the seed script). Docker Compose passes `apps/<app>/.env` to each container. There is no root `.env`. Tests: `NODE_ENV=test` also loads `.env.test` in the same app directory. Web-only personal overrides can go in `apps/web/.env.local` (gitignored).
 

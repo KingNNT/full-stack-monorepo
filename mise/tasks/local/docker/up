@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 #MISE description="Build & start all containers (postgres, api, web, mailpit)"
 set -e
+# Publish a host port only when its HOST_MACHINE_<SERVICE>_PORT is set
+# (.docker/compose/ports/<service>.yml); mise.toml sets them all.
+COMPOSE_FILE="docker-compose.yml:docker-compose.override.yml"
+for file in .docker/compose/ports/*.yml; do
+  var="HOST_MACHINE_$(basename "$file" .yml | tr 'a-z-' 'A-Z_')_PORT"
+  if [ -n "${!var}" ]; then
+    COMPOSE_FILE="$COMPOSE_FILE:$file"
+  fi
+done
+export COMPOSE_FILE
 # Docker creates a missing mount point as root; create it as the host user.
 mkdir -p apps/web/.next
 HOST_UID="$(id -u)" HOST_GID="$(id -g)" \
