@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
 #MISE description="Open Drizzle Studio (in the api container)"
-echo "Open https://local.drizzle.studio?port=${HOST_MACHINE_DRIZZLE_STUDIO_PORT:-4983}"
+if [ -n "$HOST_MACHINE_DRIZZLE_STUDIO_PORT" ]; then
+  echo "Open https://local.drizzle.studio?port=$HOST_MACHINE_DRIZZLE_STUDIO_PORT"
+else
+  echo "HOST_MACHINE_DRIZZLE_STUDIO_PORT is unset: Drizzle Studio is not published to the host"
+fi
 docker compose exec api pnpm db:studio --host 0.0.0.0 --port 4983

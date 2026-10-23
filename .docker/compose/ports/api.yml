@@ -1,0 +1,4 @@
+services:
+  api:
+    ports:
+      - "127.0.0.1:${HOST_MACHINE_API_PORT}:8000"

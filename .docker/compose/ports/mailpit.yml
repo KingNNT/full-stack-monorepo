@@ -1,0 +1,4 @@
+services:
+  mailpit:
+    ports:
+      - "127.0.0.1:${HOST_MACHINE_MAILPIT_PORT}:8025"

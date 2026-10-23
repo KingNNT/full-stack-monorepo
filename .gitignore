@@ -59,6 +59,7 @@ Thumbs.db
 # mise local
 mise.local.toml
 mise.local.*
+!mise.local.toml.example
 
 # TypeScript
 *.tsbuildinfo
